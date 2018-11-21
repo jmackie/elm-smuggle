@@ -1,0 +1,58 @@
+name: elm-smuggle
+version: 0.1.0
+synopsis: Smuggle git dependencies into your Elm apps
+license: MIT
+license-file: LICENSE
+author: Jordan Mackie
+maintainer: jmackie@protonmail.com
+copyright: Copyright (C) 2018 Jordan Mackie
+homepage: https://github.com/jmackie/elm-smuggle/
+bug-reports: https://github.com/jmackie/elm-smuggle/issues
+build-type: Simple
+extra-doc-files: README.md
+cabal-version: >=1.10
+
+flag release
+    description: Enable optimisations
+    default: False
+
+executable elm-smuggle
+    hs-source-dirs:
+        src
+    main-is:
+        Main.hs
+    other-modules:
+        Elm
+    build-depends:
+        base >=4.11 && <4.12
+      , aeson
+      , binary
+      , bytestring
+      , containers
+      , directory
+      , exceptions
+      , filepath
+      , mtl
+      , path
+      , process
+      , random
+      , text
+      , unordered-containers
+      -- XXX
+      , Cabal
+    ghc-options:
+        -Weverything
+        -fno-warn-missing-import-lists
+        -fno-warn-safe
+        -fno-warn-unsafe
+        -fno-warn-all-missed-specialisations
+    if flag(release)
+        ghc-options:
+            -O
+            -threaded
+            -rtsopts
+            -with-rtsopts=-N
+    default-language:
+        Haskell2010
+    default-extensions:
+        NoImplicitPrelude

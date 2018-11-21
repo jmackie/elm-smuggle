@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-|
+
+Logic borrowed from the elm/compiler repo
+
+https://github.com/elm/compiler
+
+-}
 module Elm
     ( PackageRegistry
         ( PackageRegistry
@@ -50,6 +57,7 @@ import Path (Path, (</>))
 import Text.Read (readMaybe)
 
 
+-- | https://github.com/elm/compiler/blob/master/builder/src/Deps/Cache.hs
 data PackageRegistry = PackageRegistry
     { registrySize     :: Int
     , registryPackages :: Map PackageName [PackageVersion]
@@ -75,6 +83,7 @@ putPackageRegistry PackageRegistry {..} = do
     put registryPackages
 
 
+-- | https://github.com/elm/compiler/blob/master/compiler/src/Elm/Package.hs
 data PackageName = PackageName
     { packageAuthor  :: !Text  -- ^ e.g. "elm"
     , packageProject :: !Text  -- ^ e.g. "core"
@@ -111,6 +120,7 @@ putPackageName packageName = do
     put (packageProject packageName)
 
 
+-- | https://github.com/elm/compiler/blob/master/compiler/src/Elm/Package.hs
 data PackageVersion = PackageVersion
     { versionMajor :: {-# UNPACK #-} !Word16
     , versionMinor :: {-# UNPACK #-} !Word16
@@ -175,6 +185,7 @@ renderPackageVersion PackageVersion {..} =
 
 
 -- PATHS
+-- https://github.com/elm/compiler/blob/master/builder/src/Elm/PerUserCache.hs
 
 
 packageRegistryFile :: MonadIO m => m (Path Path.Abs Path.File)

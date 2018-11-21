@@ -235,13 +235,16 @@ addGitDependency GitDependency { dependencyName, dependencyUrl } = do
     gitClone dependencyUrl repoDir
     logInfo (show dependencyName <> " cloned into " <> Path.toFilePath repoDir)
     tags <- gitTags repoDir
-    let versions = taggedVersions tags
+    let versions = filter validVersion (tagsToVersions tags)
     traverse_ (addElmPackage repoDir dependencyName) versions
     rmDir repoDir
     pure versions
   where
-    taggedVersions :: [String] -> [Elm.PackageVersion]
-    taggedVersions = Maybe.mapMaybe (Elm.packageVersionFromText . Text.pack)
+    tagsToVersions :: [String] -> [Elm.PackageVersion]
+    tagsToVersions = Maybe.mapMaybe (Elm.packageVersionFromText . Text.pack)
+
+    validVersion :: Elm.PackageVersion -> Bool
+    validVersion version = Elm.versionMajor version >= 1
 
 
 addElmPackage :: AbsDir -> Elm.PackageName -> Elm.PackageVersion -> Script ()

@@ -26,6 +26,7 @@ executable elm-smuggle
     build-depends:
         base >=4.11 && <4.12
       , aeson
+      , ansi-terminal
       , binary
       , bytestring
       , containers

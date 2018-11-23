@@ -24,6 +24,7 @@ import qualified Distribution.Simple.Utils as Cabal (installDirectoryContents)
 import qualified Distribution.Verbosity as Cabal (silent)
 import qualified Elm as Elm
 import qualified Path
+import qualified System.Console.ANSI as ANSI
 import qualified System.Directory as Directory
 import qualified System.Exit as Exit
 import qualified System.IO as IO
@@ -47,10 +48,10 @@ main = do
     result <- runExceptT (runScript mainScript)
     case result of
         Left err -> do
-            IO.hPutStrLn IO.stderr (printError err)
+            logError . red $ cross <> " " <> printError err
             Exit.exitFailure
 
-        Right RegistryUpdated -> putStrLn "git-dependencies added."
+        Right RegistryUpdated -> putStrLn "\nGit dependencies added."
         Right NothingToDo     -> putStrLn "nothing to do."
 
 
@@ -154,7 +155,7 @@ mainScript = do
     if null depends
         then pure NothingToDo
         else do
-            checkForGit
+            checkForGit  -- we need git
             currentRegistry <- readPackageRegistry
             newRegistry     <- addGitDependencies depends currentRegistry
             writePackageRegistry newRegistry
@@ -233,7 +234,13 @@ addGitDependency :: GitDependency -> Script [Elm.PackageVersion]
 addGitDependency GitDependency { dependencyName, dependencyUrl } = do
     repoDir <- randomTempDir
     gitClone dependencyUrl repoDir
-    logInfo (show dependencyName <> " cloned into " <> Path.toFilePath repoDir)
+    logInfos
+        [ indent
+        , green circle
+        , show dependencyName
+        , "cloned into"
+        , yellow (Path.toFilePath repoDir)
+        ]
     tags <- gitTags repoDir
     let versions = filter validVersion (tagsToVersions tags)
     traverse_ (addElmPackage repoDir dependencyName) versions
@@ -254,7 +261,7 @@ addElmPackage repoDir packageName packageVersion = do
     elmMakeDocs repoDir
     targetDir <- targetDirectory
     copyDir repoDir targetDir
-    logInfo ("\tadded " <> branch)
+    logInfos [indent, indent, cyan tick, "version", branch]
     cleanup targetDir
   where
     targetDirectory :: Script AbsDir
@@ -455,12 +462,20 @@ decodeBinary :: Binary.Binary a => ByteString -> Either String a
 decodeBinary = bimap third third . Binary.decodeOrFail
 
 
-third :: (a, b, c) -> c
-third (_, _, c) = c
+logInfos :: MonadIO m => [String] -> m ()
+logInfos = logInfo . unwords
 
 
 logInfo :: MonadIO m => String -> m ()
-logInfo = liftIO . putStrLn
+logInfo = liftIO . IO.hPutStrLn IO.stdout
+
+
+logError :: MonadIO m => String -> m ()
+logError = liftIO . IO.hPutStrLn IO.stderr
+
+
+third :: (a, b, c) -> c
+third (_, _, c) = c
 
 
 (<!?>) :: (MonadIO m, MonadError Error m) => IO a -> String -> m a
@@ -469,3 +484,50 @@ logInfo = liftIO . putStrLn
 
 (<?>) :: MonadError e m => Either e' a -> (e' -> e) -> m a
 (<?>) ea f = either (throwError . f) pure ea
+
+
+-- PRETTY OUTPUT
+
+
+circle :: String
+circle = "⬤"
+
+
+tick :: String
+tick = "✔"
+
+
+cross :: String
+cross = "✘"
+
+
+indent :: String
+indent = "   "
+
+
+cyan :: String -> String
+cyan s =
+    ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Cyan]
+        <> s
+        <> ANSI.setSGRCode [ANSI.Reset]
+
+
+green :: String -> String
+green s =
+    ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
+        <> s
+        <> ANSI.setSGRCode [ANSI.Reset]
+
+
+yellow :: String -> String
+yellow s =
+    ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Yellow]
+        <> s
+        <> ANSI.setSGRCode [ANSI.Reset]
+
+
+red :: String -> String
+red s =
+    ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+        <> s
+        <> ANSI.setSGRCode [ANSI.Reset]

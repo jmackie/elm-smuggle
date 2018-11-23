@@ -27,7 +27,6 @@ import qualified System.Directory as Directory
 import qualified System.Exit as Exit
 import qualified System.FilePath
 import qualified System.IO as IO
-import qualified System.Posix.Files
 import qualified System.Process as Process
 import qualified System.Random as Random
 
@@ -360,10 +359,14 @@ copyDir' src dst = do
     go filePath = do
         let src' = src System.FilePath.</> filePath
             dst' = dst System.FilePath.</> filePath
-        stat <- System.Posix.Files.getFileStatus src'
-        if System.Posix.Files.isDirectory stat
-            then copyDir' src' dst'
-            else Directory.copyFile src' dst'
+
+        -- NOTE: This method of determining whether something is a directory
+        -- could get fishy when it comes to symlinks, but I don't think that's
+        -- an issue here. There doesn't seem to be a cross-platform way of
+        -- `stat`ing files as far as I can tell...
+        isDirectory <- Directory.doesDirectoryExist src'
+
+        if isDirectory then copyDir' src' dst' else Directory.copyFile src' dst'
 
 
 parseAbsDir :: (MonadIO m, MonadError Error m) => FilePath -> m AbsDir

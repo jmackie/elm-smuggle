@@ -1,6 +1,4 @@
 resolver: lts-12.19 # ghc 8.4.4
 packages:
     - .
-extra-deps:
-    # Needed for the windows (appveyor) build to pass
-    - unix-2.7.2.2@sha256:4ef1d010d70a4a07a717e853d4a440c105dad38c6199316e320fdd4c48dacd34
+extra-deps: []

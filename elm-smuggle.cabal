@@ -39,7 +39,6 @@ executable elm-smuggle
       , process
       , random
       , text
-      , unix
       , unordered-containers
     ghc-options:
         -Weverything

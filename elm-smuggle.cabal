@@ -33,14 +33,14 @@ executable elm-smuggle
       , directory
       , exceptions
       , filepath
+      , filepath
       , mtl
       , path
       , process
       , random
       , text
+      , unix
       , unordered-containers
-      -- XXX
-      , Cabal
     ghc-options:
         -Weverything
         -fno-warn-missing-import-lists

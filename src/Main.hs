@@ -20,14 +20,14 @@ import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
-import qualified Distribution.Simple.Utils as Cabal (installDirectoryContents)
-import qualified Distribution.Verbosity as Cabal (silent)
 import qualified Elm as Elm
 import qualified Path
 import qualified System.Console.ANSI as ANSI
 import qualified System.Directory as Directory
 import qualified System.Exit as Exit
+import qualified System.FilePath
 import qualified System.IO as IO
+import qualified System.Posix.Files
 import qualified System.Process as Process
 import qualified System.Random as Random
 
@@ -340,20 +340,28 @@ randomTempDir = do
         if taken then go tmpdir else pure dir
 
 
-copyDir
-    :: (MonadIO m, MonadError Error m)
-    => Path b Path.Dir
-    -> Path b Path.Dir
-    -> m ()
+copyDir :: (MonadIO m, MonadError Error m) => AbsDir -> AbsDir -> m ()
 copyDir srcDir dstDir =
-    Cabal.installDirectoryContents Cabal.silent src dst
-        <!?> printf "copy (recursively) %s to %s" src dst
+    copyDir' src dst <!?> printf "copy (recursively) %s to %s" src dst
   where
-    src :: FilePath
+    src, dst :: FilePath
     src = Path.toFilePath srcDir
-
-    dst :: FilePath
     dst = Path.toFilePath dstDir
+
+
+copyDir' :: FilePath -> FilePath -> IO ()
+copyDir' src dst = do
+    Directory.createDirectoryIfMissing True dst  -- mkdir -p
+    traverse_ go =<< Directory.listDirectory src
+  where
+    go :: FilePath -> IO ()
+    go filePath = do
+        let src' = src System.FilePath.</> filePath
+            dst' = dst System.FilePath.</> filePath
+        stat <- System.Posix.Files.getFileStatus src'
+        if System.Posix.Files.isDirectory stat
+            then copyDir' src' dst'
+            else Directory.copyFile src' dst'
 
 
 parseAbsDir :: (MonadIO m, MonadError Error m) => FilePath -> m AbsDir

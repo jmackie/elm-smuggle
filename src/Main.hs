@@ -233,7 +233,7 @@ addGitDependencies (depend : depends) registry = do
 
 addGitDependency :: GitDependency -> Script [Elm.PackageVersion]
 addGitDependency GitDependency { dependencyName, dependencyUrl } = do
-    repoDir <- randomTempDir
+    repoDir <- randomTempDir "elm-smuggle-"
     gitClone dependencyUrl repoDir
     logInfos
         [ " "
@@ -327,18 +327,19 @@ readBytes file =
     where filePath = Path.toFilePath file
 
 
-randomTempDir :: forall m . (MonadIO m, MonadError Error m) => m AbsDir
-randomTempDir = do
-    tmpdir <- parseAbsDir =<< liftIO Directory.getTemporaryDirectory
-    go tmpdir
+randomTempDir
+    :: forall m . (MonadIO m, MonadError Error m) => String -> m AbsDir
+randomTempDir prefix = do
+    tmpDir <- liftIO Directory.getTemporaryDirectory >>= parseAbsDir
+    go tmpDir
   where
     go :: AbsDir -> m AbsDir
-    go tmpdir = do
-        letters <- randomLetters 20
-        relDir  <- parseRelDir letters
-        let dir = tmpdir </> relDir
+    go tmpDir = do
+        letters <- randomLetters 15
+        relDir  <- parseRelDir (prefix <> letters)
+        let dir = tmpDir </> relDir
         taken <- dirExists dir
-        if taken then go tmpdir else pure dir
+        if taken then go tmpDir else pure dir
 
 
 copyDir :: (MonadIO m, MonadError Error m) => AbsDir -> AbsDir -> m ()

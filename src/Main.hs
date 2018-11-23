@@ -51,8 +51,8 @@ main = do
             logError . red $ cross <> " " <> printError err
             Exit.exitFailure
 
-        Right RegistryUpdated -> putStrLn "\nGit dependencies added."
-        Right NothingToDo     -> putStrLn "nothing to do."
+        Right RegistryUpdated -> putStrLn "\nDependencies ready!"
+        Right NothingToDo     -> putStrLn "Nothing to do!"
 
 
 -- USER FEEDBACK
@@ -79,14 +79,14 @@ data Error
 
 printError :: Error -> String
 printError = \case
-    NoElmJson              -> "there's no elm.json here!"
-    BadElmJson         why -> "error decoding elm.json: " <> why
-    BadPackageRegistry why -> "error decoding package registry: " <> why
-    ElmMakeDocsError   why -> "error writing package documentation: " <> why
-    GitNotFound            -> "git not found on path"
-    IOFailure what         -> "io error: " <> printIOFailure what
-    GitError  what         -> "git error: " <> printGitError what
-    BadPath   why          -> "unexpected path: " <> why
+    NoElmJson              -> "There's no elm.json here!"
+    BadElmJson         why -> "Error decoding elm.json: " <> why
+    BadPackageRegistry why -> "Error decoding package registry: " <> why
+    ElmMakeDocsError   why -> "Error writing package documentation: " <> why
+    GitNotFound            -> "Git not found on path"
+    IOFailure what         -> "IO error: " <> printIOFailure what
+    GitError  what         -> "Git error: " <> printGitError what
+    BadPath   why          -> "Unexpected path: " <> why
 
 
 data GitError
@@ -100,9 +100,9 @@ data GitError
 
 printGitError :: GitError -> String
 printGitError = \case
-    CloneError    why -> "git clone failed: " <> why
-    TagsError     why -> "git tags failed: " <> why
-    CheckoutError why -> "git checkout failed: " <> why
+    CloneError    why -> "clone failed: " <> why
+    TagsError     why -> "tags failed: " <> why
+    CheckoutError why -> "checkout failed: " <> why
 
 
 data IOFailure = IOFail
@@ -157,7 +157,8 @@ mainScript = do
         else do
             checkForGit  -- we need git
             currentRegistry <- readPackageRegistry
-            newRegistry     <- addGitDependencies depends currentRegistry
+            logInfo "Starting downloads...\n"
+            newRegistry <- addGitDependencies depends currentRegistry
             writePackageRegistry newRegistry
             pure RegistryUpdated
 
@@ -235,7 +236,7 @@ addGitDependency GitDependency { dependencyName, dependencyUrl } = do
     repoDir <- randomTempDir
     gitClone dependencyUrl repoDir
     logInfos
-        [ indent
+        [ " "
         , green circle
         , show dependencyName
         , "cloned into"
@@ -261,7 +262,7 @@ addElmPackage repoDir packageName packageVersion = do
     elmMakeDocs repoDir
     targetDir <- targetDirectory
     copyDir repoDir targetDir
-    logInfos [indent, indent, cyan tick, "version", branch]
+    logInfos [replicate 5 ' ', cyan tick, "version", branch]
     cleanup targetDir
   where
     targetDirectory :: Script AbsDir
@@ -507,10 +508,6 @@ tick = "✔"
 
 cross :: String
 cross = "✘"
-
-
-indent :: String
-indent = "   "
 
 
 cyan :: String -> String

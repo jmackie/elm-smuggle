@@ -20,7 +20,7 @@ import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
-import qualified Elm as Elm
+import qualified Elm
 import qualified Path
 import qualified Path.IO
 import qualified System.Console.ANSI as ANSI
@@ -28,7 +28,7 @@ import qualified System.Exit as Exit
 import qualified System.IO as IO
 import qualified System.Process as Process
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -175,7 +175,7 @@ readGitDependencies = do
 readElmJson :: Script Aeson.Value
 readElmJson = do
     elmJsonExists <- fileExists elmJsonPath
-    when (not elmJsonExists) (throwError NoElmJson)
+    unless elmJsonExists (throwError NoElmJson)
 
     bytes <- readBytes elmJsonPath
     Aeson.eitherDecode bytes <?> BadElmJson
@@ -233,7 +233,7 @@ addGitDependencies (depend : depends) registry = do
 
 
 addGitDependency :: GitDependency -> Script [Elm.PackageVersion]
-addGitDependency GitDependency { dependencyName, dependencyUrl } = do
+addGitDependency GitDependency { dependencyName, dependencyUrl } =
     withTempDir "elm-smuggle" $ \repoDir -> do
         gitClone dependencyUrl repoDir
         logInfos
@@ -421,7 +421,7 @@ runProcessWithin
     -> String
     -> [String]
     -> m (Exit.ExitCode, String, String)
-runProcessWithin cwd cmd args = do
+runProcessWithin cwd cmd args =
     Process.readCreateProcessWithExitCode createProcess ""
         <!?> printf "run %s %s (in %s)" cmd (unwords args) (Path.fromAbsDir cwd)
   where
@@ -435,7 +435,7 @@ decodeBinary = bimap third third . Binary.decodeOrFail
 
 
 logInfo :: MonadIO m => String -> m ()
-logInfo = liftIO . IO.hPutStrLn IO.stdout
+logInfo = liftIO . putStrLn
 
 
 logInfos :: MonadIO m => [String] -> m ()

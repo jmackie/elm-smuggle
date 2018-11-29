@@ -5,7 +5,13 @@
 
 Smuggle `git` dependencies into your [Elm][elm-home] apps.
 
-# Installation
+# Install
+
+### From [npm](https://www.npmjs.com/package/elm-smuggle)
+
+```bash
+npm install --global elm-smuggle
+```
 
 ### From source
 

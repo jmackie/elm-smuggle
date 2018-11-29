@@ -25,6 +25,7 @@ import qualified Path
 import qualified Path.IO
 import qualified System.Console.ANSI as ANSI
 import qualified System.Exit as Exit
+import qualified System.Info
 import qualified System.IO as IO
 import qualified System.Process as Process
 
@@ -238,7 +239,7 @@ addGitDependency GitDependency { dependencyName, dependencyUrl } =
         gitClone dependencyUrl repoDir
         logInfos
             [ " "
-            , green circle
+            , green bullet
             , show dependencyName
             , "cloned into"
             , yellow (Path.toFilePath repoDir)
@@ -263,7 +264,7 @@ addElmPackage repoDir packageName packageVersion = do
     rmDirIfExists targetDir
     copyDir repoDir targetDir
     elmMakeDocs targetDir
-    logInfos [replicate 5 ' ', cyan tick, "version", branch]
+    logInfos [replicate 5 ' ', cyan arrow, "version", branch]
     cleanup targetDir
   where
     targetDirectory :: Script AbsDir
@@ -474,16 +475,16 @@ third (_, _, c) = c
 -- PRETTY OUTPUT
 
 
-circle :: String
-circle = "⬤"
+bullet :: String
+bullet = if windoze then "+" else "●"
 
 
-tick :: String
-tick = "✔"
+arrow :: String
+arrow = if windoze then "-" else "→"
 
 
 cross :: String
-cross = "✘"
+cross = if windoze then "X" else "✗"
 
 
 cyan :: String -> String
@@ -512,3 +513,7 @@ red s =
     ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
         <> s
         <> ANSI.setSGRCode [ANSI.Reset]
+
+
+windoze :: Bool
+windoze = System.Info.os == "mingw32"

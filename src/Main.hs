@@ -259,9 +259,10 @@ addElmPackage :: AbsDir -> Elm.PackageName -> Elm.PackageVersion -> Script ()
 addElmPackage repoDir packageName packageVersion = do
     let branch = show packageVersion
     gitCheckout repoDir branch
-    elmMakeDocs repoDir
     targetDir <- targetDirectory
+    rmDirIfExists targetDir
     copyDir repoDir targetDir
+    elmMakeDocs targetDir
     logInfos [replicate 5 ' ', cyan tick, "version", branch]
     cleanup targetDir
   where

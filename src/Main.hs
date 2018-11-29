@@ -346,6 +346,7 @@ parseRelDir filePath = maybe (throwError err) pure (Path.parseRelDir filePath)
     err = BadPath (filePath <> " is not a relative directory")
 
 
+-- | Add exception handling to an IO action.
 tryIO :: forall m a . (MonadIO m, MonadError Error m) => String -> IO a -> m a
 tryIO description action =
     liftIO (Exception.try action) >>= either handleIOException pure
@@ -354,6 +355,7 @@ tryIO description action =
     handleIOException = throwError . IOFailure . IOFail description
 
 
+-- | `git clone`
 gitClone :: (MonadIO m, MonadError Error m) => Url -> AbsDir -> m ()
 gitClone url outputDir = do
     (exit, _, stderr) <- runProcess
@@ -366,6 +368,7 @@ gitClone url outputDir = do
             throwError . GitError . CloneError $ describeExitFailure code stderr
 
 
+-- | `git tag`
 gitTags :: (MonadIO m, MonadError Error m) => AbsDir -> m [String]
 gitTags repo = do
     (exit, stdout, stderr) <- runProcessWithin repo "git" ["tag"]
@@ -375,6 +378,7 @@ gitTags repo = do
             throwError . GitError . TagsError $ describeExitFailure code stderr
 
 
+-- | `git checkout`
 gitCheckout :: (MonadIO m, MonadError Error m) => AbsDir -> String -> m ()
 gitCheckout repo branch = do
     (exit, _stdout, stderr) <- runProcessWithin repo "git" ["checkout", branch]
@@ -386,6 +390,7 @@ gitCheckout repo branch = do
                 stderr
 
 
+-- | `elm make --docs docs.json`
 elmMakeDocs :: (MonadIO m, MonadError Error m) => AbsDir -> m ()
 elmMakeDocs project = do
     (exit, _, stderr) <- runProcessWithin project
@@ -402,6 +407,7 @@ describeExitFailure code stderr =
     "non-zero exit code: " <> show code <> "\n\n" <> stderr
 
 
+-- | Start a child process.
 runProcess
     :: (MonadIO m, MonadError Error m)
     => String
@@ -415,6 +421,7 @@ runProcess cmd args =
     createProcess = Process.proc cmd args
 
 
+-- | Start a child process within a particular directory.
 runProcessWithin
     :: (MonadIO m, MonadError Error m)
     => AbsDir
@@ -430,32 +437,37 @@ runProcessWithin cwd cmd args =
         (Process.proc cmd args) { Process.cwd = Just (Path.fromAbsDir cwd) }
 
 
+-- | Decode some binary data.
 decodeBinary :: Binary.Binary a => ByteString -> Either String a
 decodeBinary = bimap third third . Binary.decodeOrFail
 
 
+-- | Log some helpful information.
 logInfo :: MonadIO m => String -> m ()
 logInfo = liftIO . putStrLn
+
+
+-- | Log an error.
+logError :: MonadIO m => String -> m ()
+logError = liftIO . IO.hPutStrLn IO.stderr
 
 
 logInfos :: MonadIO m => [String] -> m ()
 logInfos = logInfo . unwords
 
 
-logError :: MonadIO m => String -> m ()
-logError = liftIO . IO.hPutStrLn IO.stderr
-
-
-third :: (a, b, c) -> c
-third (_, _, c) = c
-
-
+-- | Add exception handling to an IO action.
 (<!?>) :: (MonadIO m, MonadError Error m) => IO a -> String -> m a
 (<!?>) = flip tryIO
 
 
+-- | Lift an Either into MonadError.
 (<?>) :: MonadError e m => Either e' a -> (e' -> e) -> m a
 (<?>) ea f = either (throwError . f) pure ea
+
+
+third :: (a, b, c) -> c
+third (_, _, c) = c
 
 
 -- PRETTY OUTPUT

@@ -22,15 +22,14 @@ import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
 import qualified Elm as Elm
 import qualified Path
+import qualified Path.IO
 import qualified System.Console.ANSI as ANSI
-import qualified System.Directory as Directory
 import qualified System.Exit as Exit
-import qualified System.FilePath
 import qualified System.IO as IO
 import qualified System.Process as Process
-import qualified System.Random as Random
 
-import Control.Monad (replicateM, when)
+import Control.Monad (when)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson ((.:?))
@@ -124,6 +123,9 @@ newtype Script a = Script { runScript :: ExceptT Error IO a }
         , Applicative
         , Monad
         , MonadIO
+        , MonadCatch
+        , MonadThrow
+        , MonadMask
         , MonadError Error
         )
 
@@ -144,7 +146,7 @@ data Result
 
 type AbsDir  = Path Path.Abs Path.Dir
 type RelDir  = Path Path.Rel Path.Dir
---type AbsFile = Path Path.Abs Path.File
+type AbsFile = Path Path.Abs Path.File
 type RelFile = Path Path.Rel Path.File
 
 
@@ -154,7 +156,7 @@ mainScript = do
     if null depends
         then pure NothingToDo
         else do
-            checkForGit  -- we need git
+            checkForGit  -- we need git to be available
             currentRegistry <- readPackageRegistry
             logInfo "Starting downloads...\n"
             newRegistry <- addGitDependencies depends currentRegistry
@@ -232,20 +234,19 @@ addGitDependencies (depend : depends) registry = do
 
 addGitDependency :: GitDependency -> Script [Elm.PackageVersion]
 addGitDependency GitDependency { dependencyName, dependencyUrl } = do
-    repoDir <- randomTempDir "elm-smuggle-"
-    gitClone dependencyUrl repoDir
-    logInfos
-        [ " "
-        , green circle
-        , show dependencyName
-        , "cloned into"
-        , yellow (Path.toFilePath repoDir)
-        ]
-    tags <- gitTags repoDir
-    let versions = filter validVersion (tagsToVersions tags)
-    traverse_ (addElmPackage repoDir dependencyName) versions
-    rmDir repoDir
-    pure versions
+    withTempDir "elm-smuggle" $ \repoDir -> do
+        gitClone dependencyUrl repoDir
+        logInfos
+            [ " "
+            , green circle
+            , show dependencyName
+            , "cloned into"
+            , yellow (Path.toFilePath repoDir)
+            ]
+        tags <- gitTags repoDir
+        let versions = filter validVersion (tagsToVersions tags)
+        traverse_ (addElmPackage repoDir dependencyName) versions
+        pure versions
   where
     tagsToVersions :: [String] -> [Elm.PackageVersion]
     tagsToVersions = Maybe.mapMaybe (Elm.packageVersionFromText . Text.pack)
@@ -280,7 +281,7 @@ addElmPackage repoDir packageName packageVersion = do
 
 -- | Is `git` on the users path? Throw an error if not.
 checkForGit :: Script ()
-checkForGit = which "git" >>= \case
+checkForGit = which $(Path.mkRelFile "git") >>= \case
     Nothing -> (throwError GitNotFound)
     Just _  -> pure ()
 
@@ -288,36 +289,32 @@ checkForGit = which "git" >>= \case
 -- IO STUFF
 
 
+-- | rm -rf
 rmDir :: (MonadIO m, MonadError Error m) => Path b Path.Dir -> m ()
 rmDir dir =
-    Directory.removePathForcibly filePath
-        <!?> printf "remove directory %s" filePath
-    where filePath = Path.toFilePath dir
+    Path.IO.removeDirRecur dir <!?> printf "remove directory %s" (show dir)
 
 
+-- | rm -rf (only if directory exists)
 rmDirIfExists :: (MonadIO m, MonadError Error m) => Path b Path.Dir -> m ()
 rmDirIfExists dir = do
     exists <- dirExists dir
     when exists (rmDir dir)
 
 
-which :: (MonadIO m, MonadError Error m) => String -> m (Maybe String)
+which :: (MonadIO m, MonadError Error m) => RelFile -> m (Maybe AbsFile)
 which exe =
-    Directory.findExecutable exe <!?> printf "search for %s executable" exe
+    Path.IO.findExecutable exe <!?> printf "search for %s executable" (show exe)
 
 
 dirExists :: (MonadIO m, MonadError Error m) => Path b Path.Dir -> m Bool
-dirExists dir =
-    Directory.doesDirectoryExist filePath
-        <!?> printf "check if directory %s exists" filePath
-    where filePath = Path.toFilePath dir
+dirExists dir = Path.IO.doesDirExist dir
+    <!?> printf "check if directory %s exists" (show dir)
 
 
 fileExists :: (MonadIO m, MonadError Error m) => Path b Path.File -> m Bool
 fileExists file =
-    Directory.doesFileExist filePath
-        <!?> printf "check if file %s exists" filePath
-    where filePath = Path.toFilePath file
+    Path.IO.doesFileExist file <!?> printf "check if file %s exists" (show file)
 
 
 readBytes :: (MonadIO m, MonadError Error m) => Path b Path.File -> m ByteString
@@ -326,54 +323,20 @@ readBytes file =
     where filePath = Path.toFilePath file
 
 
-randomTempDir
-    :: forall m . (MonadIO m, MonadError Error m) => String -> m AbsDir
-randomTempDir prefix = do
-    tmpDir <- liftIO Directory.getTemporaryDirectory >>= parseAbsDir
-    go tmpDir
-  where
-    go :: AbsDir -> m AbsDir
-    go tmpDir = do
-        letters <- randomLetters 15
-        relDir  <- parseRelDir (prefix <> letters)
-        let dir = tmpDir </> relDir
-        taken <- dirExists dir
-        if taken then go tmpDir else pure dir
+withTempDir :: (MonadIO m, MonadMask m) => String -> (AbsDir -> m a) -> m a
+withTempDir = Path.IO.withSystemTempDir
 
 
-copyDir :: (MonadIO m, MonadError Error m) => AbsDir -> AbsDir -> m ()
-copyDir srcDir dstDir =
-    copyDir' src dst <!?> printf "copy (recursively) %s to %s" src dst
-  where
-    src, dst :: FilePath
-    src = Path.toFilePath srcDir
-    dst = Path.toFilePath dstDir
-
-
-copyDir' :: FilePath -> FilePath -> IO ()
-copyDir' src dst = do
-    Directory.createDirectoryIfMissing True dst  -- mkdir -p
-    traverse_ go =<< Directory.listDirectory src
-  where
-    go :: FilePath -> IO ()
-    go filePath = do
-        let src' = src System.FilePath.</> filePath
-            dst' = dst System.FilePath.</> filePath
-
-        -- NOTE: This method of determining whether something is a directory
-        -- could get fishy when it comes to symlinks, but I don't think that's
-        -- an issue here. There doesn't seem to be a cross-platform way of
-        -- `stat`ing files as far as I can tell...
-        isDirectory <- Directory.doesDirectoryExist src'
-
-        if isDirectory then copyDir' src' dst' else Directory.copyFile src' dst'
-
-
-parseAbsDir :: (MonadIO m, MonadError Error m) => FilePath -> m AbsDir
-parseAbsDir filePath = maybe (throwError err) pure (Path.parseAbsDir filePath)
-  where
-    err :: Error
-    err = BadPath (filePath <> " is not an absolute directory")
+copyDir
+    :: (MonadIO m, MonadError Error m)
+    => Path b Path.Dir
+    -> Path b Path.Dir
+    -> m ()
+copyDir src dst = do
+    Path.IO.createDirIfMissing True dst  -- mkdir -p
+        <!?> printf "create %s if missing" (show dst)
+    Path.IO.copyDirRecur src dst
+        <!?> printf "recursively copy %s to %s" (show src) (show dst)
 
 
 parseRelDir :: (MonadIO m, MonadError Error m) => FilePath -> m RelDir
@@ -467,20 +430,16 @@ runProcessWithin cwd cmd args = do
         (Process.proc cmd args) { Process.cwd = Just (Path.fromAbsDir cwd) }
 
 
-randomLetters :: MonadIO m => Int -> m FilePath
-randomLetters n = liftIO (replicateM n $ Random.randomRIO ('a', 'z'))
-
-
 decodeBinary :: Binary.Binary a => ByteString -> Either String a
 decodeBinary = bimap third third . Binary.decodeOrFail
 
 
-logInfos :: MonadIO m => [String] -> m ()
-logInfos = logInfo . unwords
-
-
 logInfo :: MonadIO m => String -> m ()
 logInfo = liftIO . IO.hPutStrLn IO.stdout
+
+
+logInfos :: MonadIO m => [String] -> m ()
+logInfos = logInfo . unwords
 
 
 logError :: MonadIO m => String -> m ()

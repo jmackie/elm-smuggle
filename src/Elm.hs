@@ -1,13 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
-{-|
-
-Logic borrowed from the elm/compiler repo
-
-https://github.com/elm/compiler
-
--}
+--
+-- Logic borrowed from https://github.com/elm/compiler
+--
 module Elm
     ( PackageRegistry
         ( PackageRegistry
@@ -44,7 +40,7 @@ import Prelude
 import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Path
-import qualified System.Directory as Directory
+import qualified Path.IO
 import qualified System.Environment as Environment
 
 import Control.Applicative (liftA2, liftA3)
@@ -211,11 +207,6 @@ rootDir dir = do
 
 
 elmHomeDir :: MonadIO m => m (Path Path.Abs Path.Dir)
-elmHomeDir = liftIO elmHomeDir'
-
-
-elmHomeDir' :: IO (Path Path.Abs Path.Dir)
-elmHomeDir' =
-    Environment.lookupEnv "ELM_HOME"
-        >>= maybe (Directory.getAppUserDataDirectory "elm") pure
-        >>= Path.parseAbsDir
+elmHomeDir = liftIO $ do
+    elmHome <- Environment.lookupEnv "ELM_HOME"
+    maybe (Path.IO.getAppUserDataDir "elm") Path.parseAbsDir elmHome

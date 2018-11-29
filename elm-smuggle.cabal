@@ -30,14 +30,11 @@ executable elm-smuggle
       , binary
       , bytestring
       , containers
-      , directory
       , exceptions
-      , filepath
-      , filepath
       , mtl
       , path
+      , path-io
       , process
-      , random
       , text
       , unordered-containers
     ghc-options:

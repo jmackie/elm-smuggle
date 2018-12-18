@@ -89,3 +89,9 @@ All packages in `github-dependencies` _should_ be publishable by `elm` standards
 -   Packages have at least one tag >= 1.0.0
 
 [elm-home]: https://elm-lang.org/
+
+# TODO
+
+-   Check that the user has elm 0.19 installed
+-   Disable buffering on stdout and stderr (output is being muddled on Windows)
+-   Windows is failing when writing package documentation because because the compiler is waiting for stdin?

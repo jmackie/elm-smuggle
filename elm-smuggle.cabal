@@ -10,6 +10,7 @@ homepage: https://github.com/jmackie/elm-smuggle/
 bug-reports: https://github.com/jmackie/elm-smuggle/issues
 build-type: Simple
 extra-doc-files: README.md
+tested-with: GHC == 8.4.4
 cabal-version: >=1.10
 
 flag release

@@ -98,3 +98,6 @@ All packages in `github-dependencies` _should_ be publishable by `elm` standards
 -   Disable buffering on stdout and stderr (output is being muddled on Windows)
 -   Windows is failing when writing package documentation because because the compiler is waiting for stdin?
 -   If there are no tags attempt to get a version out of the `elm.json`
+
+# FIXME 
+-   Running `elm install` removes the `github-dependencies` field!

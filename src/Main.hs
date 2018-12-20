@@ -200,6 +200,9 @@ readPackageRegistry = do
 writePackageRegistry :: Elm.PackageRegistry -> Script ()
 writePackageRegistry registry = do
     file <- Elm.packageRegistryFile
+    let cacheDir = Path.parent file
+    Path.IO.createDirIfMissing True cacheDir
+        <!?> printf "create %s if missing" (show cacheDir)
     Binary.encodeFile (Path.toFilePath file) registry
         <!?> "write package registry cache"
 

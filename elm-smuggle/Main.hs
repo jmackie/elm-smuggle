@@ -44,14 +44,20 @@ import Text.Printf (printf)
 
 main :: IO ()
 main = do
+    initStreams
     result <- runExceptT (runScript mainScript)
     case result of
         Left err -> do
-            logError . red $ cross <> " " <> printError err
+            logError . red $ printError err
             Exit.exitFailure
 
         Right RegistryUpdated -> putStrLn "\nDependencies ready!"
         Right NothingToDo     -> putStrLn "Nothing to do!"
+
+
+initStreams :: IO ()
+initStreams =
+    traverse_ (`IO.hSetEncoding` IO.utf8) [ IO.stdin, IO.stdout, IO.stderr]
 
 
 -- USER FEEDBACK
@@ -484,10 +490,6 @@ bullet = if windoze then "+" else "●"
 
 arrow :: String
 arrow = if windoze then "-" else "→"
-
-
-cross :: String
-cross = if windoze then "X" else "✗"
 
 
 cyan :: String -> String

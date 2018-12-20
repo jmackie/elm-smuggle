@@ -9,9 +9,9 @@ copyright: Copyright (C) 2018 Jordan Mackie
 homepage: https://github.com/jmackie/elm-smuggle/
 bug-reports: https://github.com/jmackie/elm-smuggle/issues
 build-type: Simple
-extra-doc-files: README.md
 tested-with: GHC == 8.4.4
 cabal-version: >=1.10
+extra-doc-files: README.md
 
 flag release
     description: Enable optimisations
@@ -19,7 +19,7 @@ flag release
 
 executable elm-smuggle
     hs-source-dirs:
-        src
+        elm-smuggle
     main-is:
         Main.hs
     other-modules:

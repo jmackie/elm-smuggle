@@ -273,7 +273,7 @@ addElmPackage repoDir packageName packageVersion = do
     rmDirIfExists targetDir
     copyDir repoDir targetDir
     elmMakeDocs targetDir
-    logInfos [replicate 5 ' ', cyan arrow, "version", branch]
+    logInfos [replicate 5 ' ', cyan arrow, "version", branch, "added"]
     cleanup targetDir
   where
     targetDirectory :: Script AbsDir

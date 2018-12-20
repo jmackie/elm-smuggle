@@ -70,6 +70,8 @@ Then, before you run any `elm` commands, you should run the tool from the root o
 elm-smuggle
 ```
 
+> TODO: might be better to advise (add to `github-dependencies` -> `elm-smuggle` -> `elm install`)
+
 And you're good to go.
 
 # How it works
@@ -78,7 +80,7 @@ And you're good to go.
 2. Parse `github-dependencies` from the `elm.json`
 3. `git clone` each `github-dependency` to a temporary directory
 4. Checkout each tagged version (>= 1.0.0), `elm-make --docs=docs.json`, and copy to the (global) elm package cache
-5. Update the package registry
+5. Update the package registry (on unix systems this is `~/.elm/0.19.0/package/versions.dat`)
 
 # Caveats
 

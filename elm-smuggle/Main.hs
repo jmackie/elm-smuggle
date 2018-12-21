@@ -76,10 +76,12 @@ data Error
     | GitError GitError
     -- | Error running `elm make --docs docs.json`
     | ElmMakeDocsError String
-    -- | IO exception
+    -- | Handled IO exception
     | IOFailure IOFailure
     -- | Unexpected file path
     | BadPath String
+    -- | Unhandled IO exception
+    | UnhandledIOFailure Exception.SomeException
 
 
 printError :: Error -> String
@@ -92,6 +94,7 @@ printError = \case
     IOFailure what         -> "IO error: " <> printIOFailure what
     GitError  what         -> "Git error: " <> printGitError what
     BadPath   why          -> "Unexpected path: " <> why
+    UnhandledIOFailure what -> "Unhandled IO exception: " <> show what
 
 
 data GitError
@@ -129,12 +132,19 @@ newtype Script a = Script { runScript :: ExceptT Error IO a }
         ( Functor
         , Applicative
         , Monad
-        , MonadIO
         , MonadCatch
         , MonadThrow
         , MonadMask
         , MonadError Error
         )
+
+instance MonadIO Script where
+    liftIO ioa = Script $ do
+        result <- liftIO (Exception.try ioa)
+        case result of
+            -- Catch unhandled exceptions
+            Left err -> throwError (UnhandledIOFailure err)
+            Right a  -> pure a
 
 
 data GitDependency = GitDependency

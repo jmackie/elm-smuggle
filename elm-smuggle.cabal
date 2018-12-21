@@ -1,21 +1,35 @@
 name: elm-smuggle
 version: 0.4.0
 synopsis: Smuggle git dependencies into your Elm apps
+description:
+    Add git dependencies to Elm 0.19 projects.
+
+    This script can add Elm package projects to the global Elm package cache.
+    Once in the cache these packages can be installed with  the usual @elm-install@.
+
 license: MIT
 license-file: LICENSE
 author: Jordan Mackie
 maintainer: jmackie@protonmail.com
 copyright: Copyright (C) 2018 Jordan Mackie
+category: Command Line Tool
 homepage: https://github.com/jmackie/elm-smuggle/
 bug-reports: https://github.com/jmackie/elm-smuggle/issues
 build-type: Simple
 tested-with: GHC == 8.4.4
-cabal-version: >=1.10
+cabal-version: 1.18
 extra-doc-files: README.md
+
+
+source-repository head
+    type: git
+    location: https://github.com/jmackie/elm-smuggle/
+
 
 flag release
     description: Enable optimisations
     default: False
+
 
 executable elm-smuggle
     hs-source-dirs:
@@ -51,7 +65,6 @@ executable elm-smuggle
         -fno-warn-all-missed-specialisations
     if flag(release)
         ghc-options:
-            -O
             -threaded
             -rtsopts
             -with-rtsopts=-N

@@ -21,6 +21,7 @@ import qualified Data.Map as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as Text
 import qualified Elm
+import qualified Options
 import qualified Path
 import qualified Path.IO
 import qualified System.Console.ANSI as ANSI
@@ -38,6 +39,7 @@ import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (traverse_)
 import Data.Text (Text)
+import Options (Options)
 import Path (Path, (</>))
 import Text.Printf (printf)
 
@@ -45,7 +47,8 @@ import Text.Printf (printf)
 main :: IO ()
 main = do
     initStreams
-    result <- runExceptT (runScript mainScript)
+    options <- Options.get
+    result <- runExceptT . runScript $ mainScript options
     case result of
         Left err -> do
             logError . red $ printError err
@@ -167,8 +170,8 @@ type AbsFile = Path Path.Abs Path.File
 type RelFile = Path Path.Rel Path.File
 
 
-mainScript :: Script Result
-mainScript = do
+mainScript :: Options -> Script Result
+mainScript _ = do
     depends <- readGitDependencies
     if null depends
         then pure NothingToDo

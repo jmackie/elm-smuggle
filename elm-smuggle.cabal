@@ -24,6 +24,8 @@ executable elm-smuggle
         Main.hs
     other-modules:
         Elm
+        Options
+        Paths_elm_smuggle
     build-depends:
         base                  >= 4.11   && < 4.12
       , aeson                 >= 1.3.1  && < 1.4
@@ -38,6 +40,9 @@ executable elm-smuggle
       , process               >= 1.6.3  && < 1.7
       , text                  >= 1.2.3  && < 1.3
       , unordered-containers  >= 0.2.9  && < 0.3
+      -- TODO: add constraints
+      , network-uri
+      , template-haskell
     ghc-options:
         -Weverything
         -fno-warn-missing-import-lists

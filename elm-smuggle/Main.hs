@@ -48,7 +48,7 @@ main :: IO ()
 main = do
     initStreams
     options <- Options.get
-    result <- runExceptT . runScript $ mainScript options
+    result  <- runExceptT . runScript $ mainScript options
     case result of
         Left err -> do
             logError . red $ printError err
@@ -60,7 +60,7 @@ main = do
 
 initStreams :: IO ()
 initStreams =
-    traverse_ (`IO.hSetEncoding` IO.utf8) [ IO.stdin, IO.stdout, IO.stderr]
+    traverse_ (`IO.hSetEncoding` IO.utf8) [IO.stdin, IO.stdout, IO.stderr]
 
 
 -- USER FEEDBACK
@@ -89,14 +89,14 @@ data Error
 
 printError :: Error -> String
 printError = \case
-    NoElmJson              -> "There's no elm.json here!"
-    BadElmJson         why -> "Error decoding elm.json: " <> why
-    BadPackageRegistry why -> "Error decoding package registry: " <> why
-    ElmMakeDocsError   why -> "Error writing package documentation: " <> why
-    GitNotFound            -> "Git not found on path"
-    IOFailure what         -> "IO error: " <> printIOFailure what
-    GitError  what         -> "Git error: " <> printGitError what
-    BadPath   why          -> "Unexpected path: " <> why
+    NoElmJson               -> "There's no elm.json here!"
+    BadElmJson         why  -> "Error decoding elm.json: " <> why
+    BadPackageRegistry why  -> "Error decoding package registry: " <> why
+    ElmMakeDocsError   why  -> "Error writing package documentation: " <> why
+    GitNotFound             -> "Git not found on path"
+    IOFailure          what -> "IO error: " <> printIOFailure what
+    GitError           what -> "Git error: " <> printGitError what
+    BadPath            why  -> "Unexpected path: " <> why
     UnhandledIOFailure what -> "Unhandled IO exception: " <> show what
 
 

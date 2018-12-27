@@ -18,6 +18,7 @@ import qualified Language.Haskell.TH as TH
 import qualified Path
 import qualified Path.IO
 import qualified Paths_elm_smuggle as CabalFile
+import qualified System.Console.ANSI as ANSI
 import qualified System.Environment as Environment
 import qualified System.Exit as Exit
 import qualified System.IO as IO
@@ -63,7 +64,11 @@ get = liftIO $ do
   where
     badUsage :: Problem -> IO a
     badUsage problem = do
-        TextIO.hPutStrLn IO.stderr . Text.pack $ "Oops: " <> describeProblem problem
+        TextIO.hPutStrLn IO.stderr
+            .  red
+            .  Text.pack
+            $  "Oops: "
+            <> describeProblem problem
         TextIO.putStrLn ""
         printUsage (Exit.ExitFailure 1)
 
@@ -81,11 +86,11 @@ get = liftIO $ do
 usage :: String
 usage =
     $(TH.runIO $ do
-         let usageTxt = "usage.txt" :: FilePath
-         installed <- CabalFile.getDataFileName usageTxt
-         TH.LitE . TH.StringL <$> (readFile installed <|> readFile "usage.txt")
-         --                                 ^^^^^^^^^
-         --                          NOTE: doesn't exist in dev
+        let usageTxt = "usage.txt" :: FilePath
+        installed <- CabalFile.getDataFileName usageTxt
+        TH.LitE . TH.StringL <$> (readFile installed <|> readFile "usage.txt")
+        --                                 ^^^^^^^^^
+        --                          NOTE: doesn't exist in dev
      )
 
 
@@ -118,7 +123,7 @@ data Problem
 
 describeProblem :: Problem -> String
 describeProblem (UnknownArg str) = "unknown argument " <> str
-describeProblem (BadURI str)     = "bad url " <> str
+describeProblem (BadURI     str) = "bad url " <> str
 describeProblem (BadDotfile err) = "error parsing dotfile: " <> err
 
 
@@ -158,3 +163,16 @@ parseDotfile = traverse (parseLine . Text.unpack . Text.strip) . Text.lines
     parseLine line = case Git.parseUrl line of
         Nothing  -> Left ("bad url: " <> line)
         Just url -> Right url
+
+
+red :: Text -> Text
+red text = vividSGR ANSI.Red <> text <> resetSGR
+
+
+vividSGR :: ANSI.Color -> Text
+vividSGR color =
+    Text.pack $ ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid color]
+
+
+resetSGR :: Text
+resetSGR = Text.pack $ ANSI.setSGRCode [ANSI.Reset]

@@ -1,3 +1,6 @@
+#
+# See https://github.com/jmackie/HandyHaskell/blob/master/cabal.travis.yml
+#
 language: c
 sudo: false
 
@@ -107,8 +110,7 @@ before_deploy:
 deploy:
     provider: releases
     api_key:
-        # $ travis encrypt <github oauth token>
-        secure: "TODO"
+        secure: "US9uOeWkqOzmmBhCM37RSVlkh9mmYL7O2dEZkXDukJUIOXalNri7npyKYUTWaTuoPFBEIr0gQVwIjFY4o1AOlm8J+zSJPTXwR2t+gHEkIXuP3LAtustRJ6rgag20E3lGfEZaeiXG8Yb75nmIDIvu8MvQBmtBv0IfxsKKuPvrpzu3lx2FSRr5EX0cfnPXQjQBuO1DxqlCopMh7+yYOnXrPtnxVtmhZr4cpfQLg06V7VzzEc5e6WA/dIpEV4pUiNvK/1FzoH6eej7Ln5dhki/RBEGqxDCsHr275L6dZ7NReTWOM8XRYpbLc/OSDsKyKzFPK1RfJMYykY2KKYjQM86dsZYs7PZgNAg62Cl4gaMqfRuqHr6MFNHRHYFK7pf8gHfLUqmji2mC/QOOPCFUbpyezc4YVxNez/F0SrvKbcweHEGH3LXNtdDveqyr6JNfXyEsHQaWgU+FyTQm8+3zfn2upCaD+Q/t2N1jqb766hKpHI09vF7pX/XONXBvglsr0foIIlpuMg0TN8TOai5gr0aBxzA2HRRIx/4hZxsEm64wCj1OJxWWzHaP73/LIh86cGSNCcX20kgI5aWoKb92f5wvSQ+wWmzeJ0ULRR3x4teei9eGJl10noVLhkiMEfWBORwOaWk+P740bHlZGOKl3dvX0UuX96o93QHm2YcUEYx2Vc0="
     file:
         - $TRAVIS_OS_NAME.tar.gz
         - $TRAVIS_OS_NAME.sha

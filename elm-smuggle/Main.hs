@@ -46,27 +46,38 @@ main = do
 
     Options { deps } <- Options.get
     when (null deps) $ do
-        TextIO.putStrLn "Nothing to do!"
+        TextIO.putStrLn $ green "Nothing to do!"
         Exit.exitSuccess
 
     git <- Git.command >>= \case
         Just cmd -> pure cmd
         Nothing  -> do
-            TextIO.hPutStrLn IO.stderr "Error: git not found"
+            TextIO.hPutStrLn IO.stderr $ red "Error: git not found"
             Exit.exitFailure
 
     elm <- Elm.command >>= \case
         Just cmd -> pure cmd
         Nothing  -> do
-            TextIO.hPutStrLn IO.stderr "Error: elm not found"
+            TextIO.hPutStrLn IO.stderr $ red "Error: elm not found"
+            Exit.exitFailure
+
+    Elm.compilerVersion elm >>= \case
+        Elm.Elm019 -> pure ()
+        Elm.Elm018 -> do
+            TextIO.hPutStrLn IO.stderr $ red "Error: need elm 0.19"
+            Exit.exitFailure
+
+        Elm.UnknownCompilerVersion version -> do
+            TextIO.hPutStrLn IO.stderr $ red
+                ("Error: unknown compiler version: " <> Text.pack version)
             Exit.exitFailure
 
     currentRegistry <- readElmPackageRegistry >>= \case
         Right registry -> pure registry
         Left  err      -> do
             TextIO.hPutStrLn IO.stderr
-                             "Error: couldn't decode package registry\n"
-            TextIO.hPutStrLn IO.stderr (Text.pack err)
+                $ red "Error: couldn't decode package registry\n"
+            TextIO.hPutStrLn IO.stderr $ red (Text.pack err)
             Exit.exitFailure
 
     TextIO.putStrLn "Starting downloads...\n"

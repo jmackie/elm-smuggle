@@ -8,6 +8,8 @@ module Elm
     ( Command
     , command
     , makeDocs
+    , CompilerVersion(Elm018, Elm019, UnknownCompilerVersion)
+    , compilerVersion
 
     -- * Project manifest
     , Project(App, Package)
@@ -64,9 +66,10 @@ import qualified Data.Text as Text
 import qualified Path
 import qualified Path.IO
 import qualified System.Environment as Environment
+import qualified System.Exit as Exit
 
 import Control.Applicative (liftA2, liftA3, (<|>))
-import Control.Monad (unless, (>=>))
+import Control.Monad (unless, when, (>=>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson ((.:))
 import Data.Binary (Binary)
@@ -87,6 +90,29 @@ command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
 
 makeDocs :: MonadIO m => Command -> m Command.Result
 makeDocs (Command cmd) = Command.run cmd ["make", "--docs=docs.json"]
+
+
+data CompilerVersion
+    = Elm018
+    | Elm019
+    | UnknownCompilerVersion String
+
+
+compilerVersion :: MonadIO m => Command -> m CompilerVersion
+compilerVersion (Command cmd) = do
+    result <- Command.run cmd ["--version"]
+    when (Command.exit result /= Exit.ExitSuccess)
+        $ fail "error getting elm compiler version"
+    case split '.' (Command.stdout result) of
+        ("0" : "18" : _) -> pure Elm018
+        ("0" : "19" : _) -> pure Elm019
+        _ -> pure (UnknownCompilerVersion $ Command.stdout result)
+
+
+split :: Char -> String -> [String]
+split char s = case dropWhile (== char) s of
+    "" -> []
+    s' -> part : split char s'' where (part, s'') = break (== char) s'
 
 
 data Project
@@ -270,10 +296,7 @@ packageCacheDir = rootDir $(Path.mkRelDir "package")
 rootDir :: MonadIO m => Path Rel Dir -> m (Path Abs Dir)
 rootDir dir = do
     elmHome <- elmHomeDir
-    pure (elmHome </> compilerVersion </> dir)
-  where
-    compilerVersion :: Path Rel Dir
-    compilerVersion = $(Path.mkRelDir "0.19.0")
+    pure (elmHome </> $(Path.mkRelDir "0.19.0") </> dir)
 
 
 elmHomeDir :: MonadIO m => m (Path Abs Dir)

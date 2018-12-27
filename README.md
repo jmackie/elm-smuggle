@@ -40,6 +40,4 @@ Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 
 # TODO
 
--   Check that the user has elm 0.19 installed
 -   Windows is failing when writing package documentation because because the compiler is waiting for stdin?
--   If there are no tags attempt to get a version out of the `elm.json`?

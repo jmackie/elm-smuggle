@@ -293,19 +293,17 @@ isWindows = System.Info.os == "mingw32"
 
 
 green :: Text -> Text
-green text =
-    Text.pack
-            (ANSI.setSGRCode
-                [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Green]
-            )
-        <> text
-        <> Text.pack (ANSI.setSGRCode [ANSI.Reset])
+green text = vividSGR ANSI.Green <> text <> resetSGR
 
 
 red :: Text -> Text
-red text
-    = Text.pack
-            (ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
-            )
-        <> text
-        <> Text.pack (ANSI.setSGRCode [ANSI.Reset])
+red text = vividSGR ANSI.Red <> text <> resetSGR
+
+
+vividSGR :: ANSI.Color -> Text
+vividSGR color =
+    Text.pack $ ANSI.setSGRCode [ANSI.SetColor ANSI.Foreground ANSI.Vivid color]
+
+
+resetSGR :: Text
+resetSGR = Text.pack $ ANSI.setSGRCode [ANSI.Reset]

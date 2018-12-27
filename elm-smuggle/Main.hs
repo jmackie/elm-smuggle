@@ -79,7 +79,7 @@ main = do
 
 
 downloadProjects :: MsgChan -> Git.Command -> Elm.Command -> [Git.Url] -> IO ()
-downloadProjects chan git elm deps = do
+downloadProjects chan git elm deps =
     Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
         Async.mapConcurrently_ (downloadProject chan git elm tmpDir) deps
         Concurrent.writeChan chan Close
@@ -102,8 +102,8 @@ downloadProject chan git elm tmpDir url = handleError $ do
 
             Path.IO.withCurrentDir versionDir $ do
                 elmJsonExists <- Path.IO.doesFileExist Elm.projectFile
-                unless elmJsonExists $ do
-                    Exception.throwIO (MissingElmJson version)
+                unless elmJsonExists
+                    $ Exception.throwIO (MissingElmJson version)
 
                 elmJson <- Elm.parseProject
                     <$> LBS.readFile (Path.fromRelFile Elm.projectFile)
@@ -181,15 +181,13 @@ installProjects chan cacheDir = Concurrent.readChan chan >>= \case
 
     logInstalled :: Elm.PackageInfo -> IO ()
     logInstalled Elm.PackageInfo {..} =
-        let name    = Elm.renderPackageName $ packageName
-            version = Elm.renderPackageVersion $ packageVersion
-        in  TextIO.putStrLn
+        TextIO.putStrLn
             $  indent
             <> green bullet
             <> " "
-            <> name
+            <> Elm.renderPackageName packageName
             <> " "
-            <> version
+            <> Elm.renderPackageVersion packageVersion
 
     logError :: Git.Url -> Error -> IO ()
     logError url err =

@@ -18,7 +18,10 @@ bug-reports: https://github.com/jmackie/elm-smuggle/issues
 build-type: Simple
 tested-with: GHC == 8.4.4
 cabal-version: 1.18
-extra-doc-files: README.md
+extra-doc-files:
+    README.md
+data-files:
+    usage.txt
 
 
 source-repository head
@@ -37,26 +40,26 @@ executable elm-smuggle
     main-is:
         Main.hs
     other-modules:
-        Elm
         Options
+        Command
+        Elm
+        Git
         Paths_elm_smuggle
     build-depends:
-        base                  >= 4.11   && < 4.12
-      , aeson                 >= 1.3.1  && < 1.4
-      , ansi-terminal         >= 0.8.1  && < 0.9
-      , binary                >= 0.8.5  && < 0.9
-      , bytestring            >= 0.10.8 && < 0.11
-      , containers            >= 0.5.11 && < 0.6
-      , exceptions            >= 0.10.0 && < 0.11
-      , mtl                   >= 2.2.2  && < 2.3
-      , path                  >= 0.6.1  && < 0.7
-      , path-io               >= 1.3.3  && < 1.4
-      , process               >= 1.6.3  && < 1.7
-      , text                  >= 1.2.3  && < 1.3
-      , unordered-containers  >= 0.2.9  && < 0.3
-      -- TODO: add constraints
+        base               >= 4.11   && < 4.12
+      , aeson
+      , ansi-terminal
+      , async
+      , binary
+      , bytestring
+      , containers
+      , exceptions
       , network-uri
+      , path
+      , path-io
+      , process
       , template-haskell
+      , text
     ghc-options:
         -Weverything
         -fno-warn-missing-import-lists

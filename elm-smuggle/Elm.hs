@@ -2,16 +2,33 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 --
--- Logic borrowed from https://github.com/elm/compiler
+-- Mostly borrowed logic from https://github.com/elm/compiler
 --
 module Elm
-    ( PackageRegistry
+    ( Command
+    , command
+    , makeDocs
+
+    -- * Project manifest
+    , Project(App, Package)
+    , AppInfo
+    , PackageInfo
+        ( PackageInfo
+        , packageName
+        , packageVersion
+        )
+    , projectFile
+    , parseProject
+
+    -- * Package registry
+    , PackageRegistry
         ( PackageRegistry
         , registrySize
         , registryPackages
         )
     , emptyPackageRegistry
 
+    -- * Basic types
     , PackageName
         ( PackageName
         , packageAuthor
@@ -37,20 +54,82 @@ where
 
 import Prelude
 
+import qualified Command
+import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Types as Aeson
+import qualified Data.Binary as Binary
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Path
 import qualified Path.IO
 import qualified System.Environment as Environment
 
-import Control.Applicative (liftA2, liftA3)
+import Control.Applicative (liftA2, liftA3, (<|>))
+import Control.Monad (unless, (>=>))
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Binary (Binary, Get, Put, get, getWord8, put, putWord8)
+import Data.Aeson ((.:))
+import Data.Binary (Binary)
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Word (Word16)
-import Path (Path, (</>))
+import Path (Abs, Dir, File, Path, Rel, (</>))
 import Text.Read (readMaybe)
+
+
+-- | elm
+newtype Command = Command { _unwrapCommand :: Command.Command }
+
+
+command :: MonadIO m => m (Maybe Command)
+command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+
+
+makeDocs :: MonadIO m => Command -> m Command.Result
+makeDocs (Command cmd) = Command.run cmd ["make", "--docs=docs.json"]
+
+
+data Project
+    = App AppInfo
+    | Package PackageInfo
+
+
+projectFile :: Path Rel File
+projectFile = $(Path.mkRelFile "elm.json")
+
+
+parseProject :: LBS.ByteString -> Either String Project
+parseProject = Aeson.eitherDecode'
+    >=> Aeson.parseEither (liftA2 (<|>) parseApp parsePackage)
+  where
+    parseApp :: Aeson.Object -> Aeson.Parser Project
+    parseApp object = do
+        ty <- object .: "type"
+        unless (ty == application) (fail "not an application project")
+        pure (App ())
+
+    parsePackage :: Aeson.Object -> Aeson.Parser Project
+    parsePackage object = do
+        ty <- object .: "type"
+        unless (ty == package) (fail "not a package project")
+        packageName    <- object .: "name"
+        packageVersion <- object .: "version"
+        pure (Package PackageInfo {..})
+
+    application :: Text
+    application = "application"
+
+    package :: Text
+    package = "package"
+
+
+data PackageInfo = PackageInfo
+    { packageName    :: PackageName
+    , packageVersion :: PackageVersion
+    }
+
+
+type AppInfo = () -- not interested in applications here
 
 
 -- | https://github.com/elm/compiler/blob/master/builder/src/Deps/Cache.hs
@@ -65,18 +144,10 @@ emptyPackageRegistry = PackageRegistry 0 Map.empty
 
 
 instance Binary PackageRegistry where
-    get = getPackageRegistry
-    put = putPackageRegistry
-
-
-getPackageRegistry :: Get PackageRegistry
-getPackageRegistry = liftA2 PackageRegistry get get
-
-
-putPackageRegistry :: PackageRegistry -> Put
-putPackageRegistry PackageRegistry {..} = do
-    put registrySize
-    put registryPackages
+    get = liftA2 PackageRegistry Binary.get Binary.get
+    put PackageRegistry {..} = do
+        Binary.put registrySize
+        Binary.put registryPackages
 
 
 -- | https://github.com/elm/compiler/blob/master/compiler/src/Elm/Package.hs
@@ -86,8 +157,9 @@ data PackageName = PackageName
     } deriving (Eq, Ord)
 
 
-instance Show PackageName where
-    show = Text.unpack . renderPackageName
+instance Aeson.FromJSON PackageName where
+    parseJSON = Aeson.parseJSON >=>
+        maybe (fail "bad package name") pure . packageNameFromText
 
 
 packageNameFromText :: Text -> Maybe PackageName
@@ -102,18 +174,10 @@ renderPackageName PackageName {..} = packageAuthor <> "/" <> packageProject
 
 
 instance Binary PackageName where
-    get = getPackageName
-    put = putPackageName
-
-
-getPackageName :: Get PackageName
-getPackageName = liftA2 PackageName get get
-
-
-putPackageName :: PackageName -> Put
-putPackageName packageName = do
-    put (packageAuthor packageName)
-    put (packageProject packageName)
+    get = liftA2 PackageName Binary.get Binary.get
+    put PackageName {..} = do
+        Binary.put packageAuthor
+        Binary.put packageProject
 
 
 -- | https://github.com/elm/compiler/blob/master/compiler/src/Elm/Package.hs
@@ -128,33 +192,38 @@ instance Show PackageVersion where
     show = Text.unpack . renderPackageVersion
 
 
+instance Aeson.FromJSON PackageVersion where
+    parseJSON = Aeson.parseJSON >=>
+        maybe (fail "bad package version") pure . packageVersionFromText
+
+
 instance Binary PackageVersion where
     get = getPackageVersion
     put = putPackageVersion
 
 
-getPackageVersion :: Get PackageVersion
+getPackageVersion :: Binary.Get PackageVersion
 getPackageVersion = do
-    word <- getWord8
+    word <- Binary.getWord8
     if word == 0
-        then liftA3 PackageVersion get get get
+        then liftA3 PackageVersion Binary.get Binary.get Binary.get
         else do
-            minor <- fmap fromIntegral getWord8
-            patch <- fmap fromIntegral getWord8
+            minor <- fmap fromIntegral Binary.getWord8
+            patch <- fmap fromIntegral Binary.getWord8
             pure (PackageVersion (fromIntegral word) minor patch)
 
 
-putPackageVersion :: PackageVersion -> Put
+putPackageVersion :: PackageVersion -> Binary.Put
 putPackageVersion PackageVersion {..}
     | all fitsInWord8 [versionMajor, versionMinor, versionPatch] = do
-        putWord8 (fromIntegral versionMajor)
-        putWord8 (fromIntegral versionMinor)
-        putWord8 (fromIntegral versionPatch)
+        Binary.putWord8 (fromIntegral versionMajor)
+        Binary.putWord8 (fromIntegral versionMinor)
+        Binary.putWord8 (fromIntegral versionPatch)
     | otherwise = do
-        putWord8 0  -- NOTE: can't have major versions < 0 !
-        put versionMajor
-        put versionMinor
-        put versionPatch
+        Binary.putWord8 0  -- NOTE: can't have major versions < 0 !
+        Binary.put versionMajor
+        Binary.put versionMinor
+        Binary.put versionPatch
   where
     fitsInWord8 :: Word16 -> Bool
     fitsInWord8 = (< 256)
@@ -181,32 +250,33 @@ renderPackageVersion PackageVersion {..} =
 
 
 -- PATHS
--- https://github.com/elm/compiler/blob/master/builder/src/Elm/PerUserCache.hs
+--
+-- (https://github.com/elm/compiler/blob/master/builder/src/Elm/PerUserCache.hs)
 
 
-packageRegistryFile :: MonadIO m => m (Path Path.Abs Path.File)
+packageRegistryFile :: MonadIO m => m (Path Abs File)
 packageRegistryFile = do
     packageCache <- packageCacheDir
     pure (packageCache </> versions)
   where
-    versions :: Path Path.Rel Path.File
+    versions :: Path Rel File
     versions = $(Path.mkRelFile "versions.dat")
 
 
-packageCacheDir :: MonadIO m => m (Path Path.Abs Path.Dir)
+packageCacheDir :: MonadIO m => m (Path Abs Dir)
 packageCacheDir = rootDir $(Path.mkRelDir "package")
 
 
-rootDir :: MonadIO m => Path Path.Rel Path.Dir -> m (Path Path.Abs Path.Dir)
+rootDir :: MonadIO m => Path Rel Dir -> m (Path Abs Dir)
 rootDir dir = do
     elmHome <- elmHomeDir
     pure (elmHome </> compilerVersion </> dir)
   where
-    compilerVersion :: Path Path.Rel Path.Dir
+    compilerVersion :: Path Rel Dir
     compilerVersion = $(Path.mkRelDir "0.19.0")
 
 
-elmHomeDir :: MonadIO m => m (Path Path.Abs Path.Dir)
+elmHomeDir :: MonadIO m => m (Path Abs Dir)
 elmHomeDir = liftIO $ do
     elmHome <- Environment.lookupEnv "ELM_HOME"
     maybe (Path.IO.getAppUserDataDir "elm") Path.parseAbsDir elmHome

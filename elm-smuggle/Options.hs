@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Options
     ( Options(Options, deps, quiet)
     , defaults
@@ -62,25 +63,25 @@ get = liftIO $ do
   where
     badUsage :: Problem -> IO a
     badUsage problem = do
-        IO.hPutStrLn IO.stderr ("Oops: " <> describeProblem problem)
-        putStrLn ""
+        TextIO.hPutStrLn IO.stderr . Text.pack $ "Oops: " <> describeProblem problem
+        TextIO.putStrLn ""
         printUsage (Exit.ExitFailure 1)
 
     printUsage :: Exit.ExitCode -> IO a
     printUsage exitCode = do
-        putStrLn usage
+        TextIO.putStrLn (Text.pack usage)
         Exit.exitWith exitCode
 
     printVersion :: IO a
     printVersion = do
-        putStrLn ("elm-smuggle " <> Version.showVersion CabalFile.version)
+        TextIO.putStrLn . Text.pack $ Version.showVersion CabalFile.version
         Exit.exitSuccess
 
 
 usage :: String
 usage =
     $(TH.runIO $ do
-         let usageTxt = "usage.txt"
+         let usageTxt = "usage.txt" :: FilePath
          installed <- CabalFile.getDataFileName usageTxt
          TH.LitE . TH.StringL <$> (readFile installed <|> readFile "usage.txt")
          --                                 ^^^^^^^^^

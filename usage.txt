@@ -1,1 +1,20 @@
-elm-smuggle [git urls]
+Smuggle git dependencies into Elm (0.19) apps
+
+USAGE
+    elm-smuggle [OPTIONS] [URLS]
+
+OPTIONS
+    -v, --version   Print elm-smuggle version
+    -h, --help      Print help information
+
+URLS
+    Git repository urls to be passed to `git clone`. For example:
+
+        https://github.com/someguy/cool-thing
+        file:///home/me/elm/projects/secret-thing
+
+    Repositories should be fully-fledged Elm packages by <package.elm-lang.org>
+    standards: i.e. they should compile, be fully documented, and have at least
+    one semantic version tag >= 1.0.0.
+
+See <https://github.com/jmackie/elm-smuggle#readme> for more info.

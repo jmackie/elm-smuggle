@@ -8,6 +8,7 @@ OPTIONS
     -h, --help      Print help information
 
 URLS
+
     Git repository urls to be passed to `git clone`. For example:
 
         https://github.com/someguy/cool-thing
@@ -18,15 +19,15 @@ URLS
     one semantic version tag >= 1.0.0.
 
 DOTFILE
-    As well as reading URLs from stdin, elm-smuggle will also look for a
-    `.elm-smuggle` file in the working directory. This file should have
+
+    As well as reading URLs from stdin, elm-smuggle will also look for an
+    ".elm-smuggle" file in the working directory. This file should have
     one URL per line, for example:
 
-    ```
-    $ cat .elm-smuggle
-    https://github.com/someguy/cool-thing
-    file:///home/me/elm/projects/secret-thing
-    file:///home/me/elm/projects/another-thing
-    ```
+        $ cat .elm-smuggle
+        https://github.com/someguy/cool-thing
+        file:///home/me/elm/projects/secret-thing
+        file:///home/me/elm/projects/another-thing
+
 
 See <https://github.com/jmackie/elm-smuggle#readme> for more info.

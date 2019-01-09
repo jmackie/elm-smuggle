@@ -40,4 +40,4 @@ Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 
 # TODO
 
--   Windows is failing when writing package documentation because because the compiler is waiting for stdin?
+-   Windows is failing when writing package documentation because because the compiler is waiting for stdin? `elm make --docs=docs.json`!!

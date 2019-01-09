@@ -88,6 +88,7 @@ command :: MonadIO m => m (Maybe Command)
 command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
 
 
+-- NOTE: Running this may require package downloads!
 makeDocs :: MonadIO m => Command -> m Command.Result
 makeDocs (Command cmd) = Command.run cmd ["make", "--docs=docs.json"]
 

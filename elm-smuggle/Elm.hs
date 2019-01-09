@@ -70,6 +70,7 @@ import qualified System.Exit as Exit
 
 import Control.Applicative (liftA2, liftA3, (<|>))
 import Control.Monad (unless, when, (>=>))
+import Control.Monad.Catch (MonadCatch)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson ((.:))
 import Data.Binary (Binary)
@@ -89,8 +90,11 @@ command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
 
 
 -- NOTE: Running this may require package downloads!
-makeDocs :: MonadIO m => Command -> m Command.Result
+makeDocs :: (MonadIO m, MonadCatch m) => Command -> m Command.Result
 makeDocs (Command cmd) = Command.run cmd ["make", "--docs=docs.json"]
+    -- This command should only serve to generate a docs.json file,
+    -- other artifacts should be removed
+    <* Path.IO.ignoringAbsence (Path.IO.removeDirRecur elmStuff)
 
 
 data CompilerVersion
@@ -304,3 +308,7 @@ elmHomeDir :: MonadIO m => m (Path Abs Dir)
 elmHomeDir = liftIO $ do
     elmHome <- Environment.lookupEnv "ELM_HOME"
     maybe (Path.IO.getAppUserDataDir "elm") Path.parseAbsDir elmHome
+
+
+elmStuff :: Path Rel Dir
+elmStuff = $(Path.mkRelDir "elm-stuff")

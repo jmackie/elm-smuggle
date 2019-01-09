@@ -81,19 +81,27 @@ main = do
             Exit.exitFailure
 
     TextIO.putStrLn "Starting downloads...\n"
-    msgChan   <- Concurrent.newChan
-    _         <- Concurrent.forkIO (downloadProjects msgChan git elm deps)
-    installed <- installProjects msgChan =<< Elm.packageCacheDir
-    let newRegistry = smugglePackages installed currentRegistry
+    msgChan     <- Concurrent.newChan
+
+    newRegistry <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
+        _ <- Concurrent.forkIO (downloadProjects msgChan git elm tmpDir deps)
+        installed <- installProjects msgChan =<< Elm.packageCacheDir
+        pure (smugglePackages installed currentRegistry)
+
     writeElmPackageRegistry newRegistry
     TextIO.putStrLn "\nDependencies ready!"
 
 
-downloadProjects :: MsgChan -> Git.Command -> Elm.Command -> [Git.Url] -> IO ()
-downloadProjects chan git elm deps =
-    Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
-        Async.mapConcurrently_ (downloadProject chan git elm tmpDir) deps
-        Concurrent.writeChan chan Close
+downloadProjects
+    :: MsgChan
+    -> Git.Command
+    -> Elm.Command
+    -> Path Abs Dir
+    -> [Git.Url]
+    -> IO ()
+downloadProjects chan git elm tmpDir deps = do
+    Async.mapConcurrently_ (downloadProject chan git elm tmpDir) deps
+    Concurrent.writeChan chan Close
 
 
 downloadProject

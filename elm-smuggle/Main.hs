@@ -296,7 +296,7 @@ decodeBinary = bimap third third . Binary.decodeOrFail
 
 
 bullet :: IsString s => s
-bullet = if isWindows then "+" else "●"
+bullet = if isWindows then "+" else "-" -- FIXME: cos I'm on windoze right now
 
 
 isWindows :: Bool

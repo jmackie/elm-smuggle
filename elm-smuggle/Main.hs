@@ -99,14 +99,14 @@ downloadProjects chan git elm deps =
 downloadProject
     :: MsgChan -> Git.Command -> Elm.Command -> Path Abs Dir -> Git.Url -> IO ()
 downloadProject chan git elm tmpDir url = handleError $ do
-    repoDir <- Path.IO.createTempDir tmpDir ""
+    repoDir <- Path.IO.createTempDir tmpDir (urlSlug url)
 
     Git.clone git url repoDir >>= checkResult_ GitCloneError
 
     Path.IO.withCurrentDir repoDir $ do
         tags <- Git.tags git >>= checkResult GitTagsError
         for_ (tagsToVersions tags) $ handleError . \version -> do
-            versionDir <- Path.IO.createTempDir repoDir ""
+            versionDir <- Path.IO.createTempDir repoDir (show version)
 
             Git.checkoutTo git versionDir (show version)
                 >>= checkResult_ (GitCheckoutError version)
@@ -293,6 +293,15 @@ decodeBinary = bimap third third . Binary.decodeOrFail
   where
     third :: (a, b, c) -> c
     third (_, _, c) = c
+
+
+urlSlug :: Git.Url -> String
+urlSlug = fmap slugify . dropWhile (== '/') . Git.urlPath
+  where
+    slugify :: Char -> Char
+    slugify '/'  = '-'
+    slugify '\\' = '-'
+    slugify c    = c
 
 
 bullet :: IsString s => s

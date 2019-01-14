@@ -3,6 +3,7 @@ module Command
     ( Command
     , which
     , run
+    , runWithStdin
     , Result
     , exit
     , stdout
@@ -36,16 +37,21 @@ data Result = Result
 
 
 run :: MonadIO m => Command -> [String] -> m Result
-run = run' id
+run = run' id ""
+
+
+runWithStdin :: MonadIO m => String -> Command -> [String] -> m Result
+runWithStdin = run' id
 
 
 run'
     :: MonadIO m
     => (Process.CreateProcess -> Process.CreateProcess)
+    -> String -- ^ stdin
     -> Command
     -> [String]
     -> m Result
-run' f (Command cmd) args = liftIO $ do
+run' f stdin (Command cmd) args = liftIO $ do
     (exit, stdout, stderr) <- Process.readCreateProcessWithExitCode
         (f createProcess)
         stdin
@@ -53,6 +59,3 @@ run' f (Command cmd) args = liftIO $ do
   where
     createProcess :: Process.CreateProcess
     createProcess = Process.proc (Path.fromAbsFile cmd) args
-
-    stdin :: String
-    stdin = mempty

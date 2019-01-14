@@ -91,10 +91,11 @@ command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
 
 -- NOTE: Running this may require package downloads!
 makeDocs :: (MonadIO m, MonadCatch m) => Command -> m Command.Result
-makeDocs (Command cmd) = Command.run cmd ["make", "--docs=docs.json"]
-    -- This command should only serve to generate a docs.json file,
-    -- other artifacts should be removed
-    <* Path.IO.ignoringAbsence (Path.IO.removeDirRecur elmStuff)
+makeDocs (Command cmd) =
+    Command.runWithStdin "y" cmd ["make", "--docs=docs.json"]
+        -- This command should only serve to generate a docs.json file,
+        -- other artifacts should be removed
+        <* Path.IO.ignoringAbsence (Path.IO.removeDirRecur elmStuff)
 
 
 data CompilerVersion

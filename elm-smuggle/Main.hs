@@ -313,7 +313,7 @@ urlSlug = fmap slugify . dropWhile (== '/') . Git.urlPath
 
 
 bullet :: IsString s => s
-bullet = if isWindows then "+" else "-" -- FIXME: cos I'm on windoze right now
+bullet = if isWindows then "+" else "●"
 
 
 isWindows :: Bool

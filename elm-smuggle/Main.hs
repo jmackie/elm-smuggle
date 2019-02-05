@@ -44,7 +44,7 @@ main = do
     traverse_ (`IO.hSetBuffering` IO.NoBuffering) streams
     traverse_ (`IO.hSetEncoding` IO.utf8)         streams
 
-    Options { deps } <- Options.get
+    opts@Options { deps } <- Options.get
     when (null deps) $ do
         TextIO.putStrLn $ green "Nothing to do!"
         Exit.exitSuccess
@@ -86,8 +86,8 @@ main = do
     newRegistry <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
         cacheDir <- Elm.packageCacheDir
         _        <- Concurrent.forkIO
-            $ downloadProjects msgChan git elm cacheDir tmpDir deps
-        installed <- installProjects msgChan =<< Elm.packageCacheDir
+            $ downloadProjects msgChan opts git elm cacheDir tmpDir
+        installed <- installProjects msgChan opts =<< Elm.packageCacheDir
         pure (smugglePackages installed currentRegistry)
 
     writeElmPackageRegistry newRegistry
@@ -96,26 +96,29 @@ main = do
 
 downloadProjects
     :: MsgChan
+    -> Options
     -> Git.Command
     -> Elm.Command
     -> Path Abs Dir
     -> Path Abs Dir
-    -> [Git.Url]
     -> IO ()
-downloadProjects chan git elm cacheDir tmpDir deps = do
-    Async.mapConcurrently_ (downloadProject chan git elm cacheDir tmpDir) deps
+downloadProjects chan opts git elm cacheDir tmpDir = do
+    Async.mapConcurrently_
+        (downloadProject chan opts git elm cacheDir tmpDir)
+        (Options.deps opts)
     Concurrent.writeChan chan Close
 
 
 downloadProject
     :: MsgChan
+    -> Options
     -> Git.Command
     -> Elm.Command
     -> Path Abs Dir -- ^ elm cache directory
     -> Path Abs Dir -- ^ working temporary directory
     -> Git.Url
     -> IO ()
-downloadProject chan git elm cacheDir tmpDir url = handleError $ do
+downloadProject chan opts git elm cacheDir tmpDir url = handleError $ do
     repoDir <- Path.IO.createTempDir tmpDir (urlSlug url)
 
     Git.clone git url repoDir >>= checkResult_ GitCloneError
@@ -138,12 +141,14 @@ downloadProject chan git elm cacheDir tmpDir url = handleError $ do
 
                 case elmJson of
                     Left err -> Exception.throwIO (BadElmJson version err)
+
                     Right (Elm.App _) ->
                         Exception.throwIO (IsApplication version)
+
                     Right (Elm.Package projectInfo) -> do
                         installDir <- elmPackageDir cacheDir projectInfo
                         installed  <- Path.IO.doesDirExist installDir
-                        unless installed $ do
+                        unless (installed && not (Options.reinstall opts)) $ do
                             Elm.makeDocs elm
                                 >>= checkResult_ (ElmMakeDocsError version)
                             sendProject chan versionDir projectInfo
@@ -183,11 +188,16 @@ data Error
 
 
 installProjects
-    :: MsgChan -> Path Abs Dir -> IO (Map Elm.PackageName [Elm.PackageVersion])
-installProjects chan cacheDir = Concurrent.readChan chan >>= \case
-    Close -> pure Map.empty
+    :: MsgChan
+    -> Options
+    -> Path Abs Dir
+    -> IO (Map Elm.PackageName [Elm.PackageVersion])
+installProjects chan opts cacheDir = Concurrent.readChan chan >>= \case
+    Close         -> pure Map.empty
 
-    Error url err -> logError url err >> installProjects chan cacheDir
+    Error url err -> do
+        unless (Options.suppressErrors opts) (logError url err)
+        installProjects chan opts cacheDir
 
     Project absDir packageInfo -> do
         installDir <- elmPackageDir cacheDir packageInfo
@@ -196,7 +206,7 @@ installProjects chan cacheDir = Concurrent.readChan chan >>= \case
         Map.insertWith (<>)
                        (Elm.packageName packageInfo)
                        [Elm.packageVersion packageInfo]
-            <$> installProjects chan cacheDir
+            <$> installProjects chan opts cacheDir
   where
     logInstalled :: Elm.PackageInfo -> IO ()
     logInstalled Elm.PackageInfo {..} =

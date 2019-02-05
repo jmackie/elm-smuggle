@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 module Options
-    ( Options(Options, deps, quiet)
+    ( Options(Options, deps, quiet, suppressErrors, reinstall)
     , defaults
     , get
     )
@@ -31,14 +31,21 @@ import Path (File, Path, Rel)
 
 -- | Program options.
 data Options = Options
-    { deps  :: [Git.Url]
-    , quiet :: Bool
+    { deps           :: [Git.Url]
+    , quiet          :: Bool
+    , suppressErrors :: Bool
+    , reinstall      :: Bool
     }
 
 
 -- | Default options.
 defaults :: Options
-defaults = Options [] False
+defaults = Options
+    { deps           = []
+    , quiet          = False
+    , suppressErrors = False
+    , reinstall      = False
+    }
 
 
 addDeps :: [Git.Url] -> Options -> Options
@@ -105,11 +112,14 @@ resolveMode :: [Arg] -> Mode
 resolveMode = go defaults
   where
     go :: Options -> [Arg] -> Mode
-    go options []                      = RunWith options
-    go _       (HelpFlag       : _   ) = Help
-    go _       (VersionFlag    : _   ) = PrintVersion
-    go _       (Unknown arg    : _   ) = BadUsage (UnknownArg arg)
-    go options (QuietFlag      : rest) = go options { quiet = True } rest
+    go options []                   = RunWith options
+    go _       (HelpFlag    : _   ) = Help
+    go _       (VersionFlag : _   ) = PrintVersion
+    go _       (Unknown arg : _   ) = BadUsage (UnknownArg arg)
+    go options (QuietFlag   : rest) = go options { quiet = True } rest
+    go options (SuppressErrorsFlag : rest) =
+        go options { suppressErrors = True } rest
+    go options (ReinstallFlag  : rest) = go options { reinstall = True } rest
     go options (Positional str : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
         Just uri -> go (addDeps [uri] options) rest
@@ -132,6 +142,8 @@ data Arg
     | HelpFlag            -- ^ -h|--help
     | VersionFlag         -- ^ -v|--version
     | QuietFlag           -- ^ -q|--quiet
+    | SuppressErrorsFlag  -- ^ --suppress-errors
+    | ReinstallFlag       -- ^ --reinstall
     | Unknown String
 
 
@@ -140,16 +152,19 @@ parseArgs = Maybe.mapMaybe parseArg
 
 
 parseArg :: String -> Maybe Arg
-parseArg ""                = Nothing
+parseArg ""                  = Nothing
 
-parseArg "--help"          = Just HelpFlag
-parseArg "-h"              = Just HelpFlag
+parseArg "--help"            = Just HelpFlag
+parseArg "-h"                = Just HelpFlag
 
-parseArg "--version"       = Just VersionFlag
-parseArg "-v"              = Just VersionFlag
+parseArg "--version"         = Just VersionFlag
+parseArg "-v"                = Just VersionFlag
 
-parseArg unknown@('-' : _) = Just (Unknown unknown)
-parseArg positional        = Just (Positional positional)
+parseArg "--suppress-errors" = Just SuppressErrorsFlag
+parseArg "--reinstall"       = Just ReinstallFlag
+
+parseArg unknown@('-' : _)   = Just (Unknown unknown)
+parseArg positional          = Just (Positional positional)
 
 
 dotfile :: Path Rel File

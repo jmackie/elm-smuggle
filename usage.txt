@@ -4,8 +4,11 @@ USAGE
     elm-smuggle [OPTIONS] [URLS]
 
 OPTIONS
-    -v, --version   Print elm-smuggle version
-    -h, --help      Print help information
+    -v, --version      Print elm-smuggle version
+    -h, --help         Print help information
+
+    --suppress-errors  Don't print (non-fatal) errors
+    --reinstall        Reinstall package versions
 
 URLS
 

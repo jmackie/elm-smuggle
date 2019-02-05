@@ -84,7 +84,9 @@ main = do
     msgChan     <- Concurrent.newChan
 
     newRegistry <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
-        _ <- Concurrent.forkIO (downloadProjects msgChan git elm tmpDir deps)
+        cacheDir <- Elm.packageCacheDir
+        _        <- Concurrent.forkIO
+            $ downloadProjects msgChan git elm cacheDir tmpDir deps
         installed <- installProjects msgChan =<< Elm.packageCacheDir
         pure (smugglePackages installed currentRegistry)
 
@@ -97,16 +99,23 @@ downloadProjects
     -> Git.Command
     -> Elm.Command
     -> Path Abs Dir
+    -> Path Abs Dir
     -> [Git.Url]
     -> IO ()
-downloadProjects chan git elm tmpDir deps = do
-    Async.mapConcurrently_ (downloadProject chan git elm tmpDir) deps
+downloadProjects chan git elm cacheDir tmpDir deps = do
+    Async.mapConcurrently_ (downloadProject chan git elm cacheDir tmpDir) deps
     Concurrent.writeChan chan Close
 
 
 downloadProject
-    :: MsgChan -> Git.Command -> Elm.Command -> Path Abs Dir -> Git.Url -> IO ()
-downloadProject chan git elm tmpDir url = handleError $ do
+    :: MsgChan
+    -> Git.Command
+    -> Elm.Command
+    -> Path Abs Dir -- ^ elm cache directory
+    -> Path Abs Dir -- ^ working temporary directory
+    -> Git.Url
+    -> IO ()
+downloadProject chan git elm cacheDir tmpDir url = handleError $ do
     repoDir <- Path.IO.createTempDir tmpDir (urlSlug url)
 
     Git.clone git url repoDir >>= checkResult_ GitCloneError
@@ -132,9 +141,12 @@ downloadProject chan git elm tmpDir url = handleError $ do
                     Right (Elm.App _) ->
                         Exception.throwIO (IsApplication version)
                     Right (Elm.Package projectInfo) -> do
-                        Elm.makeDocs elm
-                            >>= checkResult_ (ElmMakeDocsError version)
-                        sendProject chan versionDir projectInfo
+                        installDir <- elmPackageDir cacheDir projectInfo
+                        installed  <- Path.IO.doesDirExist installDir
+                        unless installed $ do
+                            Elm.makeDocs elm
+                                >>= checkResult_ (ElmMakeDocsError version)
+                            sendProject chan versionDir projectInfo
   where
     checkResult_ :: (Int -> String -> Error) -> Command.Result -> IO ()
     checkResult_ description result = () <$ checkResult description result
@@ -178,7 +190,7 @@ installProjects chan cacheDir = Concurrent.readChan chan >>= \case
     Error url err -> logError url err >> installProjects chan cacheDir
 
     Project absDir packageInfo -> do
-        installDir <- mkInstallDir packageInfo
+        installDir <- elmPackageDir cacheDir packageInfo
         Path.IO.copyDirRecur absDir installDir
         logInstalled packageInfo
         Map.insertWith (<>)
@@ -186,18 +198,6 @@ installProjects chan cacheDir = Concurrent.readChan chan >>= \case
                        [Elm.packageVersion packageInfo]
             <$> installProjects chan cacheDir
   where
-    mkInstallDir :: Elm.PackageInfo -> IO (Path Abs Dir)
-    mkInstallDir Elm.PackageInfo {..} = do
-        let author  = Text.unpack . Elm.packageAuthor $ packageName
-        let project = Text.unpack . Elm.packageProject $ packageName
-        let version = Text.unpack . Elm.renderPackageVersion $ packageVersion
-
-        authorDir  <- Path.parseRelDir author
-        projectDir <- Path.parseRelDir project
-        versionDir <- Path.parseRelDir version
-
-        pure (cacheDir </> authorDir </> projectDir </> versionDir)
-
     logInstalled :: Elm.PackageInfo -> IO ()
     logInstalled Elm.PackageInfo {..} =
         TextIO.putStrLn
@@ -258,6 +258,19 @@ data Msg
 
 sendProject :: MsgChan -> Path Abs Dir -> Elm.PackageInfo -> IO ()
 sendProject chan dir info = Concurrent.writeChan chan (Project dir info)
+
+
+elmPackageDir :: Path Abs Dir -> Elm.PackageInfo -> IO (Path Abs Dir)
+elmPackageDir cacheDir Elm.PackageInfo {..} = do
+    let author  = Text.unpack . Elm.packageAuthor $ packageName
+    let project = Text.unpack . Elm.packageProject $ packageName
+    let version = Text.unpack . Elm.renderPackageVersion $ packageVersion
+
+    authorDir  <- Path.parseRelDir author
+    projectDir <- Path.parseRelDir project
+    versionDir <- Path.parseRelDir version
+
+    pure (cacheDir </> authorDir </> projectDir </> versionDir)
 
 
 -- UTIL

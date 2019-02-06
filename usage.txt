@@ -8,7 +8,7 @@ OPTIONS
     -h, --help         Print help information
 
     --suppress-errors  Don't print (non-fatal) errors
-    --reinstall        Reinstall package versions
+    --reinstall        Force reinstall package versions
 
 URLS
 
@@ -17,7 +17,7 @@ URLS
         https://github.com/someguy/cool-thing
         file:///home/me/elm/projects/secret-thing
 
-    Repositories should be fully-fledged Elm packages by <package.elm-lang.org>
+    Repositories should be fully-fledged Elm packages by <https://package.elm-lang.org>
     standards: i.e. they should compile, be fully documented, and have at least
     one semantic version tag >= 1.0.0.
 

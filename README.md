@@ -16,7 +16,6 @@ npm install --global elm-smuggle
 ### From source
 
 ```bash
-cd elm-smuggle
 stack install
 ```
 

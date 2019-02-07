@@ -3,7 +3,7 @@ module Command
     ( Command
     , which
     , run
-    , runWithStdin
+    , runWithYes
     , Result
     , exit
     , stdout
@@ -16,8 +16,11 @@ import Prelude
 import qualified Path
 import qualified Path.IO
 import qualified System.Exit as Exit
+import qualified System.IO as IO
 import qualified System.Process as Process
 
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Path (Abs, File, Path, Rel)
 
@@ -37,25 +40,33 @@ data Result = Result
 
 
 run :: MonadIO m => Command -> [String] -> m Result
-run = run' id ""
-
-
-runWithStdin :: MonadIO m => String -> Command -> [String] -> m Result
-runWithStdin = run' id
-
-
-run'
-    :: MonadIO m
-    => (Process.CreateProcess -> Process.CreateProcess)
-    -> String -- ^ stdin
-    -> Command
-    -> [String]
-    -> m Result
-run' f stdin (Command cmd) args = liftIO $ do
+run (Command cmd) args = liftIO $ do
     (exit, stdout, stderr) <- Process.readCreateProcessWithExitCode
-        (f createProcess)
-        stdin
+        createProcess
+        "" -- stdin
     pure Result {..}
   where
+    -- NOTE: Inheriting std streams
     createProcess :: Process.CreateProcess
     createProcess = Process.proc (Path.fromAbsFile cmd) args
+
+
+runWithYes :: MonadIO m => Command -> [String] -> m Result
+runWithYes (Command cmd) args = liftIO $ do
+    (hStdin, hStdout, hStderr, processHandle) <- Process.runInteractiveProcess
+        (Path.fromAbsFile cmd)
+        args
+        Nothing -- default working directory
+        Nothing -- default environment
+
+    _        <- forkIO (yes hStdin)
+    exitCode <- Process.waitForProcess processHandle
+    Result exitCode <$> IO.hGetContents hStdout <*> IO.hGetContents hStderr
+  where
+    yes :: IO.Handle -> IO ()
+    yes h = do
+        closed <- IO.hIsClosed h
+        unless closed $ do
+            IO.hPutChar h 'y'
+            threadDelay 500000 -- 500ms
+            yes h

@@ -40,9 +40,9 @@ import Path (Abs, Dir, Path, (</>))
 
 main :: IO ()
 main = do
-    let streams = [IO.stdout, IO.stderr]
-    traverse_ (`IO.hSetBuffering` IO.NoBuffering) streams
-    traverse_ (`IO.hSetEncoding` IO.utf8)         streams
+    -- Initialise std streams
+    traverse_ (`IO.hSetBuffering` IO.NoBuffering) [IO.stdout, IO.stderr]
+    traverse_ (`IO.hSetEncoding` IO.utf8) [IO.stdin, IO.stdout, IO.stderr]
 
     opts@Options { deps } <- Options.get
     when (null deps) $ do

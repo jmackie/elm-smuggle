@@ -27,7 +27,7 @@ import qualified System.Exit as Exit
 import qualified System.Info
 import qualified System.IO as IO
 
-import Control.Monad (guard, unless, when)
+import Control.Monad (guard, unless, void, when)
 import Data.Bifunctor (bimap)
 import Data.Foldable (for_, traverse_)
 import Data.Map (Map)
@@ -51,47 +51,41 @@ main = do
 
     git <- Git.command >>= \case
         Just cmd -> pure cmd
-        Nothing  -> do
-            TextIO.hPutStrLn IO.stderr $ red "Error: git not found"
-            Exit.exitFailure
+        Nothing  -> failure "git not found"
 
     elm <- Elm.command >>= \case
         Just cmd -> pure cmd
-        Nothing  -> do
-            TextIO.hPutStrLn IO.stderr $ red "Error: elm not found"
-            Exit.exitFailure
+        Nothing  -> failure "elm not found"
 
     Elm.compilerVersion elm >>= \case
         Elm.Elm019 -> pure ()
-        Elm.Elm018 -> do
-            TextIO.hPutStrLn IO.stderr $ red "Error: need elm 0.19"
-            Exit.exitFailure
+        Elm.Elm018 -> failure "need elm 0.19"
 
-        Elm.UnknownCompilerVersion version -> do
-            TextIO.hPutStrLn IO.stderr $ red
-                ("Error: unknown compiler version: " <> Text.pack version)
-            Exit.exitFailure
-
-    currentRegistry <- readElmPackageRegistry >>= \case
-        Right registry -> pure registry
-        Left  err      -> do
-            TextIO.hPutStrLn IO.stderr
-                $ red "Error: couldn't decode package registry\n"
-            TextIO.hPutStrLn IO.stderr $ red (Text.pack err)
-            Exit.exitFailure
+        Elm.UnknownCompilerVersion version ->
+            failure ("unknown compiler version: " <> Text.pack version)
 
     TextIO.putStrLn "Starting downloads...\n"
     msgChan     <- Concurrent.newChan
 
-    newRegistry <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
+    installed <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
         cacheDir <- Elm.packageCacheDir
-        _        <- Concurrent.forkIO
-            $ downloadProjects msgChan opts git elm cacheDir tmpDir
-        installed <- installProjects msgChan opts =<< Elm.packageCacheDir
-        pure (smugglePackages installed currentRegistry)
+        void . Concurrent.forkIO $
+            downloadProjects msgChan opts git elm cacheDir tmpDir
+        installProjects msgChan opts cacheDir
 
+    currentRegistry <- readElmPackageRegistry >>= \case
+        Right registry -> pure registry
+        Left  err      ->
+            failure ("couldn't read existing package registry\n" <> Text.pack err)
+
+    let newRegistry = smugglePackages installed currentRegistry
     writeElmPackageRegistry newRegistry
     TextIO.putStrLn "\nDependencies ready!"
+  where
+    failure :: Text -> IO a
+    failure err = do
+        TextIO.hPutStrLn IO.stderr (red "Error: " <> err)
+        Exit.exitFailure
 
 
 downloadProjects

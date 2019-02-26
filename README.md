@@ -36,3 +36,7 @@ Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 -   Packages have at least one tag >= 1.0.0
 
 [elm-home]: https://elm-lang.org/
+
+## TODO
+
+-   [ ] Rethink `.elm-smuggle` file format

@@ -172,13 +172,28 @@ dotfile :: Path Rel File
 dotfile = $(Path.mkRelFile ".elm-smuggle")
 
 
+-- TODO: A better format for this file (probs json)
 parseDotfile :: Text -> Either String [(Git.Url, Maybe Elm.Constraint)]
-parseDotfile = traverse (parseLine . Text.unpack . Text.strip) . Text.lines
+parseDotfile = traverse (parseLine . Text.strip) . Text.lines
   where
-    parseLine :: String -> Either String (Git.Url, Maybe Elm.Constraint)
-    parseLine line = case Git.parseUrl line of
-        Nothing  -> Left ("bad url: " <> line)
-        Just url -> Right (url, Nothing)
+    parseLine :: Text -> Either String (Git.Url, Maybe Elm.Constraint)
+    parseLine line = case Text.strip <$> Text.breakOn " " line of
+        (url', "") -> do
+            url <- note ("bad url: " <> Text.unpack url') $
+                   Git.parseUrl (Text.unpack url')
+            pure (url, Nothing)
+
+        (url', constraint') -> do
+            url <- note ("bad url: " <> Text.unpack url') $
+                   Git.parseUrl (Text.unpack url')
+            constraint <- note ("bad constraint: " <> Text.unpack constraint') $
+                          Elm.constraintFromText constraint'
+            pure (url, Just constraint)
+
+
+note :: e -> Maybe a -> Either e a
+note e Nothing  = Left e
+note _ (Just a) = Right a
 
 
 red :: Text -> Text

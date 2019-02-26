@@ -36,7 +36,3 @@ Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 -   Packages have at least one tag >= 1.0.0
 
 [elm-home]: https://elm-lang.org/
-
-# TODO
-
--   Windows is failing when writing package documentation because because the compiler is waiting for stdin? `elm make --docs=docs.json`!!

@@ -5,7 +5,7 @@
 
 Smuggle `git` dependencies into your [Elm][elm-home] apps.
 
-# Install
+## Install
 
 ### From [npm](https://www.npmjs.com/package/elm-smuggle)
 
@@ -19,7 +19,7 @@ npm install --global elm-smuggle
 stack install
 ```
 
-# How to use it
+## How to use it
 
 TODO
 
@@ -27,7 +27,7 @@ TODO
 2. Run `elm-smuggle` from the project root.
 3. Run `elm install <smuggled-package-name>`
 
-# Caveats
+## Caveats
 
 Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 

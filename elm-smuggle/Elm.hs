@@ -48,6 +48,11 @@ module Elm
     , packageVersionFromText
     , renderPackageVersion
 
+    , Constraint(Range)
+    , Op(Less, LessOrEqual)
+    , satisfiesConstraint
+    , constraintFromText
+
     -- * Paths
     , packageRegistryFile
     , packageCacheDir
@@ -75,6 +80,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson ((.:))
 import Data.Binary (Binary)
 import Data.Map (Map)
+import Data.Ord (comparing)
 import Data.Text (Text)
 import Data.Word (Word16)
 import Path (Abs, Dir, File, Path, Rel, (</>))
@@ -216,11 +222,17 @@ data PackageVersion = PackageVersion
     { versionMajor :: {-# UNPACK #-} !Word16
     , versionMinor :: {-# UNPACK #-} !Word16
     , versionPatch :: {-# UNPACK #-} !Word16
-    } deriving (Eq, Ord)
+    } deriving (Eq)
 
 
 instance Show PackageVersion where
     show = Text.unpack . renderPackageVersion
+
+
+instance Ord PackageVersion where
+    compare = comparing versionMajor <>
+              comparing versionMinor <>
+              comparing versionPatch
 
 
 instance Aeson.FromJSON PackageVersion where
@@ -278,6 +290,39 @@ renderPackageVersion PackageVersion {..} =
         <> show versionMinor
         <> "."
         <> show versionPatch
+
+
+-- | 1.0.0 <= v < 2.0.0
+data Constraint = Range PackageVersion Op Op PackageVersion
+
+
+constraintFromText :: Text -> Maybe Constraint
+constraintFromText text = case Text.words text of
+    [ lower, lowerOp, "v", upperOp, upper] ->
+        Range
+            <$> packageVersionFromText lower
+            <*> opFromText lowerOp
+            <*> opFromText upperOp
+            <*> packageVersionFromText upper
+    _ ->
+        Nothing
+
+
+satisfiesConstraint :: Constraint -> PackageVersion -> Bool
+satisfiesConstraint range v = case range of
+    (Range lower Less        Less upper)        -> lower <  v && v <  upper
+    (Range lower LessOrEqual Less upper)        -> lower <= v && v <  upper
+    (Range lower Less        LessOrEqual upper) -> lower <  v && v <= upper
+    (Range lower LessOrEqual LessOrEqual upper) -> lower <= v && v <= upper
+
+
+data Op = Less | LessOrEqual
+
+
+opFromText :: Text -> Maybe Op
+opFromText "<"  = Just Less
+opFromText "<=" = Just LessOrEqual
+opFromText _    = Nothing
 
 
 -- PATHS

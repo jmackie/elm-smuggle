@@ -110,16 +110,19 @@ downloadProject
     -> Elm.Command
     -> Path Abs Dir -- ^ elm cache directory
     -> Path Abs Dir -- ^ working temporary directory
-    -> Git.Url
+    -> (Git.Url, Maybe Elm.Constraint)
     -> IO ()
-downloadProject chan opts git elm cacheDir tmpDir url = handleError $ do
+downloadProject chan opts git elm cacheDir tmpDir (url, constraint) = handleError $ do
     repoDir <- Path.IO.createTempDir tmpDir (urlSlug url)
 
     Git.clone git url repoDir >>= checkResult_ GitCloneError
 
     Path.IO.withCurrentDir repoDir $ do
-        tags <- Git.tags git >>= checkResult GitTagsError
-        for_ (tagsToVersions tags) $ handleError . \version -> do
+        rawTags <- Git.tags git >>= checkResult GitTagsError
+        let versionTags = tagsToVersions rawTags
+        let constraintFilter = maybe (const True) Elm.satisfiesConstraint constraint
+        let tags = filter constraintFilter versionTags
+        for_ tags $ handleError . \version -> do
             versionDir <- Path.IO.createTempDir repoDir (show version)
 
             Git.checkoutTo git versionDir (show version)

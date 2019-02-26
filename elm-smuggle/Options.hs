@@ -16,6 +16,7 @@ import qualified Data.Version as Version
 import qualified Git
 import qualified Language.Haskell.TH as TH
 import qualified Path
+import qualified Elm
 import qualified Path.IO
 import qualified Paths_elm_smuggle as CabalFile
 import qualified System.Console.ANSI as ANSI
@@ -31,7 +32,7 @@ import Path (File, Path, Rel)
 
 -- | Program options.
 data Options = Options
-    { deps           :: [Git.Url]
+    { deps           :: [(Git.Url, Maybe Elm.Constraint)]
     , quiet          :: Bool
     , suppressErrors :: Bool
     , reinstall      :: Bool
@@ -48,7 +49,7 @@ defaults = Options
     }
 
 
-addDeps :: [Git.Url] -> Options -> Options
+addDeps :: [(Git.Url, Maybe Elm.Constraint)] -> Options -> Options
 addDeps urls opts = opts { deps = deps opts <> urls }
 
 
@@ -122,7 +123,7 @@ resolveMode = go defaults
     go options (ReinstallFlag  : rest) = go options { reinstall = True } rest
     go options (Positional str : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
-        Just uri -> go (addDeps [uri] options) rest
+        Just uri -> go (addDeps [(uri, Nothing)] options) rest
 
 
 data Problem
@@ -171,13 +172,13 @@ dotfile :: Path Rel File
 dotfile = $(Path.mkRelFile ".elm-smuggle")
 
 
-parseDotfile :: Text -> Either String [Git.Url]
+parseDotfile :: Text -> Either String [(Git.Url, Maybe Elm.Constraint)]
 parseDotfile = traverse (parseLine . Text.unpack . Text.strip) . Text.lines
   where
-    parseLine :: String -> Either String Git.Url
+    parseLine :: String -> Either String (Git.Url, Maybe Elm.Constraint)
     parseLine line = case Git.parseUrl line of
         Nothing  -> Left ("bad url: " <> line)
-        Just url -> Right url
+        Just url -> Right (url, Nothing)
 
 
 red :: Text -> Text

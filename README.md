@@ -27,6 +27,18 @@ TODO
 2. Run `elm-smuggle` from the project root.
 3. Run `elm install <smuggled-package-name>`
 
+## Options
+
+```
+-v, --version      Print elm-smuggle version
+-h, --help         Print help information
+
+--suppress-errors  Don't print (non-fatal) errors
+--reinstall        Force reinstall package versions
+
+--local-bin        Use elm binary from node_modules dir
+```
+
 ## Caveats
 
 Packages to be smuggled _should_ be publishable by `elm` standards. That means:
@@ -40,3 +52,4 @@ Packages to be smuggled _should_ be publishable by `elm` standards. That means:
 ## TODO
 
 -   [ ] Rethink `.elm-smuggle` file format
+-   [ ] Rethink `--local-bin` flag

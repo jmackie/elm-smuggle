@@ -26,6 +26,7 @@ import qualified System.Console.ANSI as ANSI
 import qualified System.Exit as Exit
 import qualified System.Info
 import qualified System.IO as IO
+--import qualified Common as C
 
 import Control.Monad (guard, unless, void, when)
 import Data.Bifunctor (bimap)
@@ -34,7 +35,7 @@ import Data.Map (Map)
 import Data.Maybe (mapMaybe)
 import Data.String (IsString)
 import Data.Text (Text)
-import Options (Options(..))
+import Options (Options(..), localBin)
 import Path (Abs, Dir, Path, (</>))
 
 
@@ -53,7 +54,7 @@ main = do
         Just cmd -> pure cmd
         Nothing  -> failure "git not found"
 
-    elm <- Elm.command >>= \case
+    elm <- Elm.command (localBin opts) >>= \case
         Just cmd -> pure cmd
         Nothing  -> failure "elm not found"
 

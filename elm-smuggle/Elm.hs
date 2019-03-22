@@ -91,8 +91,9 @@ import Text.Read (readMaybe)
 newtype Command = Command { _unwrapCommand :: Command.Command }
 
 
-command :: MonadIO m => m (Maybe Command)
-command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+command :: MonadIO m => Bool -> m (Maybe Command)
+command False = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+command True = fmap Command <$> Command.whichFind [$(Path.mkRelDir "node_modules/.bin")] $(Path.mkRelFile "elm")
 
 
 -- NOTE: Running this may require package downloads!

@@ -10,6 +10,8 @@ OPTIONS
     --suppress-errors  Don't print (non-fatal) errors
     --reinstall        Force reinstall package versions
 
+    --local-bin        Use elm binary from node_modules dir
+
 URLS
 
     Git repository urls to be passed to `git clone`. For example:

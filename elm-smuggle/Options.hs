@@ -4,6 +4,7 @@ module Options
     ( Options(Options, deps, quiet, suppressErrors, reinstall)
     , defaults
     , get
+    , localBin
     )
 where
 
@@ -36,6 +37,7 @@ data Options = Options
     , quiet          :: Bool
     , suppressErrors :: Bool
     , reinstall      :: Bool
+    , localBin       :: Bool
     }
 
 
@@ -46,6 +48,7 @@ defaults = Options
     , quiet          = False
     , suppressErrors = False
     , reinstall      = False
+    , localBin       = False
     }
 
 
@@ -68,7 +71,7 @@ get = liftIO $ do
                     f    <- TextIO.readFile (Path.fromRelFile dotfile)
                     urls <- either (badUsage . BadDotfile) pure (parseDotfile f)
                     pure (addDeps urls opts)
-                else pure opts
+                else pure $ opts
   where
     badUsage :: Problem -> IO a
     badUsage problem = do
@@ -121,6 +124,7 @@ resolveMode = go defaults
     go options (SuppressErrorsFlag : rest) =
         go options { suppressErrors = True } rest
     go options (ReinstallFlag  : rest) = go options { reinstall = True } rest
+    go options (LocalBin       : rest) = go options { localBin = True } rest
     go options (Positional str : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
         Just uri -> go (addDeps [(uri, Nothing)] options) rest
@@ -145,6 +149,7 @@ data Arg
     | QuietFlag           -- ^ -q|--quiet
     | SuppressErrorsFlag  -- ^ --suppress-errors
     | ReinstallFlag       -- ^ --reinstall
+    | LocalBin            -- ^ --local-bin
     | Unknown String
 
 
@@ -163,6 +168,7 @@ parseArg "-v"                = Just VersionFlag
 
 parseArg "--suppress-errors" = Just SuppressErrorsFlag
 parseArg "--reinstall"       = Just ReinstallFlag
+parseArg "--local-bin"       = Just LocalBin
 
 parseArg unknown@('-' : _)   = Just (Unknown unknown)
 parseArg positional          = Just (Positional positional)

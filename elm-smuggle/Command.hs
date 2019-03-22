@@ -2,6 +2,7 @@
 module Command
     ( Command
     , which
+    , whichFind
     , run
     , runWithYes
     , Result
@@ -22,7 +23,7 @@ import qualified System.Process as Process
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Path (Abs, File, Path, Rel)
+import Path (Abs, File, Dir, Path, Rel)
 
 
 newtype Command = Command { _commandPath :: Path Abs File }
@@ -30,6 +31,10 @@ newtype Command = Command { _commandPath :: Path Abs File }
 
 which :: MonadIO m => Path Rel File -> m (Maybe Command)
 which = fmap (fmap Command) . Path.IO.findExecutable
+
+
+whichFind :: MonadIO m => [Path b Dir] -> Path Rel File -> m (Maybe Command)
+whichFind dirs = fmap (fmap Command) . Path.IO.findFile dirs
 
 
 data Result = Result

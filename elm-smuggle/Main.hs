@@ -62,25 +62,25 @@ main = do
         Elm.Elm019 -> pure ()
         Elm.Elm018 -> failure "need elm 0.19"
 
-        Elm.UnknownCompilerVersion version ->
-            failure ("unknown compiler version: " <> Text.pack version)
+    --     Elm.UnknownCompilerVersion version ->
+    --         failure ("unknown compiler version: " <> Text.pack version)
 
-    TextIO.putStrLn "Starting downloads...\n"
-    msgChan     <- Concurrent.newChan
+    -- TextIO.putStrLn "Starting downloads...\n"
+    -- msgChan     <- Concurrent.newChan
 
-    installed <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
-        cacheDir <- Elm.packageCacheDir
-        void . Concurrent.forkIO $
-            downloadProjects msgChan opts git elm cacheDir tmpDir
-        installProjects msgChan opts cacheDir
+    -- installed <- Path.IO.withSystemTempDir "elm-smuggle" $ \tmpDir -> do
+    --     cacheDir <- Elm.packageCacheDir
+    --     void . Concurrent.forkIO $
+    --         downloadProjects msgChan opts git elm cacheDir tmpDir
+    --     installProjects msgChan opts cacheDir
 
-    currentRegistry <- readElmPackageRegistry >>= \case
-        Right registry -> pure registry
-        Left  err      ->
-            failure ("couldn't read existing package registry\n" <> Text.pack err)
+    -- currentRegistry <- readElmPackageRegistry >>= \case
+    --     Right registry -> pure registry
+    --     Left  err      ->
+    --         failure ("couldn't read existing package registry\n" <> Text.pack err)
 
-    let newRegistry = smugglePackages installed currentRegistry
-    writeElmPackageRegistry newRegistry
+    -- let newRegistry = smugglePackages installed currentRegistry
+    -- writeElmPackageRegistry newRegistry
     TextIO.putStrLn "\nDependencies ready!"
   where
     failure :: Text -> IO a

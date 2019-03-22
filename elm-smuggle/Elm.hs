@@ -91,9 +91,17 @@ import Text.Read (readMaybe)
 newtype Command = Command { _unwrapCommand :: Command.Command }
 
 
-command :: MonadIO m => Bool -> m (Maybe Command)
-command False = fmap Command <$> Command.which $(Path.mkRelFile "elm")
-command True = fmap Command <$> Command.whichFind [$(Path.mkRelDir "node_modules/.bin")] $(Path.mkRelFile "elm")
+command :: MonadIO m => Maybe String -> m (Maybe Command)
+command Nothing = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+command (Just binPath) = fmap Command <$> Command.resolve binPath
+
+--command (Just binPath) = fmap Command <$> Command.whichFind [$(Path.mkRelDir "./node_modules/elm/unpacked_bin/")] elmBin
+
+-- elmBin :: Path Rel File
+-- elmBin = $(Path.mkRelFile "elm.exe")
+
+-- elmSearchDirs :: [Path Rel Dir]
+-- elmSearchDirs = [ $(Path.mkRelDir "./node_modules/elm/unpacked_bin/") ]
 
 
 -- NOTE: Running this may require package downloads!

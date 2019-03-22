@@ -33,8 +33,12 @@ which :: MonadIO m => Path Rel File -> m (Maybe Command)
 which = fmap (fmap Command) . Path.IO.findExecutable
 
 
-whichFind :: MonadIO m => [Path b Dir] -> Path Rel File -> m (Maybe Command)
-whichFind dirs = fmap (fmap Command) . Path.IO.findFile dirs
+resolve :: MonadIO m  => IO.FilePath -> m (Maybe Command)
+resolve = fmap (fmap Command) . fmap Maybe . Path.IO.resolveFile'
+
+
+-- whichFind :: MonadIO m => [Path b Dir] -> Path Rel File -> m (Maybe Command)
+-- whichFind dirs = fmap (fmap Command) . Path.IO.findFile dirs
 
 
 data Result = Result

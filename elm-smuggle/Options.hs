@@ -37,7 +37,7 @@ data Options = Options
     , quiet          :: Bool
     , suppressErrors :: Bool
     , reinstall      :: Bool
-    , localBin       :: Bool
+    , localBin       :: Maybe String
     }
 
 
@@ -48,7 +48,7 @@ defaults = Options
     , quiet          = False
     , suppressErrors = False
     , reinstall      = False
-    , localBin       = False
+    , localBin       = Nothing
     }
 
 
@@ -123,9 +123,9 @@ resolveMode = go defaults
     go options (QuietFlag   : rest) = go options { quiet = True } rest
     go options (SuppressErrorsFlag : rest) =
         go options { suppressErrors = True } rest
-    go options (ReinstallFlag  : rest) = go options { reinstall = True } rest
-    go options (LocalBin       : rest) = go options { localBin = True } rest
-    go options (Positional str : rest) = case Git.parseUrl str of
+    go options (ReinstallFlag       : rest) = go options { reinstall = True } rest
+    go options (LocalBin binPath    : rest) = go options { localBin = Just binPath } rest
+    go options (Positional str      : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
         Just uri -> go (addDeps [(uri, Nothing)] options) rest
 
@@ -149,7 +149,7 @@ data Arg
     | QuietFlag           -- ^ -q|--quiet
     | SuppressErrorsFlag  -- ^ --suppress-errors
     | ReinstallFlag       -- ^ --reinstall
-    | LocalBin            -- ^ --local-bin
+    | LocalBin String     -- ^ --local-bin
     | Unknown String
 
 
@@ -158,20 +158,21 @@ parseArgs = Maybe.mapMaybe parseArg
 
 
 parseArg :: String -> Maybe Arg
-parseArg ""                  = Nothing
+parseArg ""                         = Nothing
 
-parseArg "--help"            = Just HelpFlag
-parseArg "-h"                = Just HelpFlag
+parseArg "--help"                   = Just HelpFlag
+parseArg "-h"                       = Just HelpFlag
 
-parseArg "--version"         = Just VersionFlag
-parseArg "-v"                = Just VersionFlag
+parseArg "--version"                = Just VersionFlag
+parseArg "-v"                       = Just VersionFlag
 
-parseArg "--suppress-errors" = Just SuppressErrorsFlag
-parseArg "--reinstall"       = Just ReinstallFlag
-parseArg "--local-bin"       = Just LocalBin
+parseArg "--suppress-errors"        = Just SuppressErrorsFlag
+parseArg "--reinstall"              = Just ReinstallFlag
 
-parseArg unknown@('-' : _)   = Just (Unknown unknown)
-parseArg positional          = Just (Positional positional)
+parseArg ("--local-bin=":binPath)   = Just $ LocalBin binPath
+
+parseArg unknown@('-' : _)          = Just (Unknown unknown)
+parseArg positional                 = Just (Positional positional)
 
 
 dotfile :: Path Rel File

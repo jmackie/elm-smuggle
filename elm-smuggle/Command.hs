@@ -2,6 +2,7 @@
 module Command
     ( Command
     , which
+    , resolve
     , run
     , runWithYes
     , Result
@@ -18,6 +19,7 @@ import qualified Path.IO
 import qualified System.Exit as Exit
 import qualified System.IO as IO
 import qualified System.Process as Process
+import qualified System.Directory as Directory
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (unless)
@@ -30,6 +32,16 @@ newtype Command = Command { _commandPath :: Path Abs File }
 
 which :: MonadIO m => Path Rel File -> m (Maybe Command)
 which = fmap (fmap Command) . Path.IO.findExecutable
+
+
+resolve :: MonadIO m  => IO.FilePath -> m (Maybe Command)
+resolve elmBinPath = liftIO $ do
+    fileExists <- Directory.doesFileExist elmBinPath
+    fmap (fmap Command) $ 
+        if fileExists then
+            fmap Just $ Path.IO.resolveFile' elmBinPath
+        else
+            pure Nothing
 
 
 data Result = Result

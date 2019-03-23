@@ -91,8 +91,9 @@ import Text.Read (readMaybe)
 newtype Command = Command { _unwrapCommand :: Command.Command }
 
 
-command :: MonadIO m => m (Maybe Command)
-command = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+command :: MonadIO m => Maybe String -> m (Maybe Command)
+command Nothing = fmap Command <$> Command.which $(Path.mkRelFile "elm")
+command (Just binPath) = fmap Command <$> Command.resolve binPath
 
 
 -- NOTE: Running this may require package downloads!

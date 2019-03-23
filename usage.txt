@@ -4,11 +4,13 @@ USAGE
     elm-smuggle [OPTIONS] [URLS]
 
 OPTIONS
-    -v, --version      Print elm-smuggle version
-    -h, --help         Print help information
+    -v, --version       Print elm-smuggle version
+    -h, --help          Print help information
 
-    --suppress-errors  Don't print (non-fatal) errors
-    --reinstall        Force reinstall package versions
+    --suppress-errors   Don't print (non-fatal) errors
+    --reinstall         Force reinstall package versions
+
+    --elm-bin=<path>    Relative path to elm binary, e.g. to the one in your node_modules folder
 
 URLS
 
@@ -33,4 +35,4 @@ DOTFILE
         file:///home/me/elm/projects/another-thing
 
 
-See <https://github.com/jmackie/elm-smuggle#readme> for more info.
+See <https://github.com/ivan-jukic/elm-smuggle#readme> for more info.

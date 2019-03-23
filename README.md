@@ -21,11 +21,32 @@ stack install
 
 ## How to use it
 
-TODO
-
 1. Write some repo URLs to an `.elm-smuggle`. Commit this file.
 2. Run `elm-smuggle` from the project root.
 3. Run `elm install <smuggled-package-name>`
+
+## Options
+
+```
+-v, --version       Print elm-smuggle version
+```
+
+```
+-h, --help          Print help information
+```
+
+```
+--suppress-errors   Don't print (non-fatal) errors
+```
+
+```
+--reinstall         Force reinstall package versions
+```
+
+By default `elm-smuggle` will use system installation of `elm 0.19`.
+```
+--elm-bin=<path>    Relative path to elm binary, e.g. to the one in your node_modules folder
+```
 
 ## Caveats
 

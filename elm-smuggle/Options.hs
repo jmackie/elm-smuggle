@@ -4,6 +4,7 @@ module Options
     ( Options(Options, deps, quiet, suppressErrors, reinstall)
     , defaults
     , get
+    , elmBin
     )
 where
 
@@ -36,6 +37,7 @@ data Options = Options
     , quiet          :: Bool
     , suppressErrors :: Bool
     , reinstall      :: Bool
+    , elmBin         :: Maybe String
     }
 
 
@@ -46,6 +48,7 @@ defaults = Options
     , quiet          = False
     , suppressErrors = False
     , reinstall      = False
+    , elmBin         = Nothing
     }
 
 
@@ -68,7 +71,7 @@ get = liftIO $ do
                     f    <- TextIO.readFile (Path.fromRelFile dotfile)
                     urls <- either (badUsage . BadDotfile) pure (parseDotfile f)
                     pure (addDeps urls opts)
-                else pure opts
+                else pure $ opts
   where
     badUsage :: Problem -> IO a
     badUsage problem = do
@@ -120,8 +123,9 @@ resolveMode = go defaults
     go options (QuietFlag   : rest) = go options { quiet = True } rest
     go options (SuppressErrorsFlag : rest) =
         go options { suppressErrors = True } rest
-    go options (ReinstallFlag  : rest) = go options { reinstall = True } rest
-    go options (Positional str : rest) = case Git.parseUrl str of
+    go options (ReinstallFlag       : rest) = go options { reinstall = True } rest
+    go options (ElmBin binPath      : rest) = go options { elmBin = Just binPath } rest
+    go options (Positional str      : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
         Just uri -> go (addDeps [(uri, Nothing)] options) rest
 
@@ -145,6 +149,7 @@ data Arg
     | QuietFlag           -- ^ -q|--quiet
     | SuppressErrorsFlag  -- ^ --suppress-errors
     | ReinstallFlag       -- ^ --reinstall
+    | ElmBin String       -- ^ --elm-bin
     | Unknown String
 
 
@@ -153,19 +158,30 @@ parseArgs = Maybe.mapMaybe parseArg
 
 
 parseArg :: String -> Maybe Arg
-parseArg ""                  = Nothing
+parseArg ""                         = Nothing
 
-parseArg "--help"            = Just HelpFlag
-parseArg "-h"                = Just HelpFlag
+parseArg "--help"                   = Just HelpFlag
+parseArg "-h"                       = Just HelpFlag
 
-parseArg "--version"         = Just VersionFlag
-parseArg "-v"                = Just VersionFlag
+parseArg "--version"                = Just VersionFlag
+parseArg "-v"                       = Just VersionFlag
 
-parseArg "--suppress-errors" = Just SuppressErrorsFlag
-parseArg "--reinstall"       = Just ReinstallFlag
+parseArg "--suppress-errors"        = Just SuppressErrorsFlag
+parseArg "--reinstall"              = Just ReinstallFlag
 
-parseArg unknown@('-' : _)   = Just (Unknown unknown)
-parseArg positional          = Just (Positional positional)
+parseArg option@('-' : _)           = Just . toArg . splitArg . Text.pack $ option
+    where
+        toArg :: [Text] -> Arg
+        toArg ["--elm-bin", binPath] = unpackArg ElmBin binPath
+        toArg _                      = Unknown option
+        
+        splitArg :: Text -> [Text] 
+        splitArg = Text.splitOn "="
+
+        unpackArg :: (String -> Arg) -> Text -> Arg
+        unpackArg a = a . Text.unpack
+
+parseArg positional                 = Just (Positional positional)
 
 
 dotfile :: Path Rel File

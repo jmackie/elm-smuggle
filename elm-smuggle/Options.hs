@@ -4,7 +4,7 @@ module Options
     ( Options(Options, deps, quiet, suppressErrors, reinstall)
     , defaults
     , get
-    , localBin
+    , elmBin
     )
 where
 
@@ -37,7 +37,7 @@ data Options = Options
     , quiet          :: Bool
     , suppressErrors :: Bool
     , reinstall      :: Bool
-    , localBin       :: Maybe String
+    , elmBin         :: Maybe String
     }
 
 
@@ -48,7 +48,7 @@ defaults = Options
     , quiet          = False
     , suppressErrors = False
     , reinstall      = False
-    , localBin       = Nothing
+    , elmBin         = Nothing
     }
 
 
@@ -124,7 +124,7 @@ resolveMode = go defaults
     go options (SuppressErrorsFlag : rest) =
         go options { suppressErrors = True } rest
     go options (ReinstallFlag       : rest) = go options { reinstall = True } rest
-    go options (LocalBin binPath    : rest) = go options { localBin = Just binPath } rest
+    go options (ElmBin binPath      : rest) = go options { elmBin = Just binPath } rest
     go options (Positional str      : rest) = case Git.parseUrl str of
         Nothing  -> BadUsage (BadURI str)
         Just uri -> go (addDeps [(uri, Nothing)] options) rest
@@ -149,7 +149,7 @@ data Arg
     | QuietFlag           -- ^ -q|--quiet
     | SuppressErrorsFlag  -- ^ --suppress-errors
     | ReinstallFlag       -- ^ --reinstall
-    | LocalBin String     -- ^ --local-bin
+    | ElmBin String       -- ^ --elm-bin
     | Unknown String
 
 
@@ -169,9 +169,18 @@ parseArg "-v"                       = Just VersionFlag
 parseArg "--suppress-errors"        = Just SuppressErrorsFlag
 parseArg "--reinstall"              = Just ReinstallFlag
 
-parseArg ("--local-bin=":binPath)   = Just $ LocalBin binPath
+parseArg option@('-' : _)           = Just . toArg . splitArg . Text.pack $ option
+    where
+        toArg :: [Text] -> Arg
+        toArg ["--elm-bin", binPath] = unpackArg ElmBin binPath
+        toArg _                      = Unknown option
+        
+        splitArg :: Text -> [Text] 
+        splitArg = Text.splitOn "="
 
-parseArg unknown@('-' : _)          = Just (Unknown unknown)
+        unpackArg :: (String -> Arg) -> Text -> Arg
+        unpackArg a = a . Text.unpack
+
 parseArg positional                 = Just (Positional positional)
 
 
